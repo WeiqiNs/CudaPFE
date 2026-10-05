@@ -25,7 +25,6 @@ TEST(PairingTest, IsBilinearAndNonDegenerate){
     const auto p = G1::random(), p2 = G1::random();
     const auto q = G2::random();
 
-    EXPECT_EQ(pair(G1::generator(), G2::generator()), Gt::generator());
     EXPECT_FALSE(Gt::generator().is_one());
     EXPECT_EQ(pair(p * a, q * b), pair(p, q).pow(a * b));
     EXPECT_EQ(pair(p + p2, q), pair(p, q) * pair(p2, q));

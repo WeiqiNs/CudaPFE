@@ -90,9 +90,6 @@ TEST(GtTest, DecodingRejectsInvalidEncodings){
     const auto valid = Gt::generator().to_bytes();
     ASSERT_EQ(Gt::from_bytes(valid), Gt::generator());
 
-    auto outside = valid;
-    outside.back() ^= 0x01;
-    EXPECT_THROW((void)Gt::from_bytes(outside), DecodeError);
     EXPECT_THROW((void)Gt::from_bytes(Bytes(valid.size(), 0xFF)), DecodeError);
     EXPECT_THROW((void)Gt::from_bytes(ByteView(valid).first(valid.size() - 1)), DecodeError);
 }

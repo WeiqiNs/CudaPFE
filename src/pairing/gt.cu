@@ -1,6 +1,5 @@
 #include <array>
 #include <bit>
-#include <cstddef>
 #include <cufe/core.hpp>
 #include "curve/encoding.hpp"
 #include "field/constants.hpp"
@@ -10,7 +9,6 @@
 
 namespace cufe{
     using detail::Access;
-    using detail::Fp;
     using detail::Fp2;
     using detail::Fp6;
     using detail::Fp12;
@@ -52,7 +50,7 @@ namespace cufe{
             rest = rest.subspan(2 * size);
         }
         constexpr auto order = detail::kR;
-        if (!(detail::pow(f, order) == Fp12::one())) throw DecodeError("Gt encoding is not in the order-r subgroup");
+        if (detail::pow(f, order) != Fp12::one()) throw DecodeError("Gt encoding is not in the order-r subgroup");
         return gt(f);
     }
 

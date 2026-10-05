@@ -29,7 +29,7 @@ namespace cufe::detail{
     [[nodiscard]] inline std::optional<Fp> sqrt(const Fp& x){
         constexpr auto exponent = kFpSqrtExponent;
         const auto root = x.pow(exponent);
-        if (!(root.square() == x)) return std::nullopt;
+        if (root.square() != x) return std::nullopt;
         return root;
     }
 

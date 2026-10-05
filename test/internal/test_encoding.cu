@@ -43,11 +43,8 @@ namespace{
     }
 
     Bytes modulus_bytes(){
-        constexpr auto modulus = kP;
         Bytes out;
-        for (auto word = modulus.rbegin(); word != modulus.rend(); ++word){
-            for (int shift = 56; shift >= 0; shift -= 8) out.push_back(static_cast<std::uint8_t>(*word >> shift));
-        }
+        append_big_endian(out, kP);
         return out;
     }
 

@@ -26,6 +26,13 @@ namespace cufe{
 
         template <Side S>
         Point<S> point(const Jacobian<S>& p){ return Access::value<Point<S>>(p); }
+
+        template <Side S>
+        constexpr bool sizes_match_encoding =
+            Point<S>::compressed_size == detail::encoded_size<typename SideField<S>::type>(Encoding::compressed)
+            && Point<S>::uncompressed_size == detail::encoded_size<typename SideField<S>::type>(Encoding::uncompressed);
+
+        static_assert(sizes_match_encoding<Side::g1> && sizes_match_encoding<Side::g2>);
     }
 
     template <Side S>
