@@ -18,6 +18,10 @@ namespace cufe{
 
         GpuRuntime::~GpuRuntime(){ cudaStreamDestroy(stream_); }
 
+        void GpuRuntime::synchronize() const{
+            check(cudaStreamSynchronize(stream_), "cudaStreamSynchronize");
+        }
+
         const GpuRuntime& GpuRuntime::require(){
             static const GpuRuntime runtime;
             return runtime;

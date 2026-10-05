@@ -40,6 +40,7 @@ add_library(cufe_core STATIC
         src/pairing/gt.cu
         src/pairing/pair.cu
         src/support/runtime.cu
+        src/vec/vec.cu
 )
 add_library(CuFE::core ALIAS cufe_core)
 target_compile_features(cufe_core PUBLIC cxx_std_20)

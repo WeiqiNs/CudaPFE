@@ -10,16 +10,7 @@ namespace cufe{
 
     namespace{
         template <Side S>
-        struct SideField;
-
-        template <>
-        struct SideField<Side::g1>{ using type = detail::Fp; };
-
-        template <>
-        struct SideField<Side::g2>{ using type = detail::Fp2; };
-
-        template <Side S>
-        using Jacobian = detail::Jacobian<typename SideField<S>::type>;
+        using Jacobian = detail::Jacobian<detail::SideField<S>>;
 
         template <Side S>
         Jacobian<S> jacobian(const Point<S>& p){ return Access::element<Jacobian<S>>(p); }
@@ -29,15 +20,15 @@ namespace cufe{
 
         template <Side S>
         constexpr bool sizes_match_encoding =
-            Point<S>::compressed_size == detail::encoded_size<typename SideField<S>::type>(Encoding::compressed)
-            && Point<S>::uncompressed_size == detail::encoded_size<typename SideField<S>::type>(Encoding::uncompressed);
+            Point<S>::compressed_size == detail::encoded_size<detail::SideField<S>>(Encoding::compressed)
+            && Point<S>::uncompressed_size == detail::encoded_size<detail::SideField<S>>(Encoding::uncompressed);
 
         static_assert(sizes_match_encoding<Side::g1> && sizes_match_encoding<Side::g2>);
     }
 
     template <Side S>
     Point<S> Point<S>::generator(){
-        using F = typename SideField<S>::type;
+        using F = detail::SideField<S>;
         return point<S>(detail::from_affine(detail::CurveParams<F>::generator()));
     }
 
@@ -53,7 +44,7 @@ namespace cufe{
 
     template <Side S>
     Point<S> Point<S>::from_bytes(const ByteView bytes){
-        return point<S>(detail::from_affine(detail::decode<typename SideField<S>::type>(bytes)));
+        return point<S>(detail::from_affine(detail::decode<detail::SideField<S>>(bytes)));
     }
 
     template <Side S>

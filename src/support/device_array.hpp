@@ -12,8 +12,10 @@ namespace cufe::detail{
     template <class T>
     class DeviceArray{
     public:
-        explicit DeviceArray(const std::size_t size) : size_(size), stream_(GpuRuntime::require().stream()){
-            if (size_ > 0) check(cudaMallocAsync(&data_, size_ * sizeof(T), stream_), "cudaMallocAsync");
+        explicit DeviceArray(const std::size_t size) : size_(size){
+            if (size_ == 0) return;
+            stream_ = GpuRuntime::require().stream();
+            check(cudaMallocAsync(&data_, size_ * sizeof(T), stream_), "cudaMallocAsync");
         }
 
         DeviceArray(DeviceArray&& other) noexcept
@@ -35,6 +37,10 @@ namespace cufe::detail{
 
         [[nodiscard]] T* data(){ return data_; }
 
+        [[nodiscard]] const T* data() const{ return data_; }
+
+        [[nodiscard]] std::size_t size() const{ return size_; }
+
         void copy_from(const std::span<const T> source){
             if (source.size() != size_){
                 throw ShapeError("DeviceArray of " + std::to_string(size_) + " elements cannot take "
@@ -54,10 +60,18 @@ namespace cufe::detail{
             return host;
         }
 
+        [[nodiscard]] T element(const std::size_t index) const{
+            T host;
+            check(cudaMemcpyAsync(&host, data_ + index, sizeof(T), cudaMemcpyDeviceToHost, stream_),
+                "cudaMemcpyAsync to host");
+            check(cudaStreamSynchronize(stream_), "cudaStreamSynchronize");
+            return host;
+        }
+
     private:
         T* data_ = nullptr;
         std::size_t size_;
-        cudaStream_t stream_;
+        cudaStream_t stream_ = nullptr;
     };
 }
 

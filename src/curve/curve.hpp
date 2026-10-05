@@ -6,6 +6,7 @@
 #include <string>
 #include <type_traits>
 #include <vector>
+#include <cufe/core.hpp>
 #include <cufe/errors.hpp>
 #include "field/constants.hpp"
 #include "field/field.hpp"
@@ -38,6 +39,9 @@ namespace cufe::detail{
     using G1Jacobian = Jacobian<Fp>;
     using G2Affine = Affine<Fp2>;
     using G2Jacobian = Jacobian<Fp2>;
+
+    template <Side S>
+    using SideField = std::conditional_t<S == Side::g1, Fp, Fp2>;
 
     static_assert(sizeof(G1Jacobian) == 144 && std::is_trivially_copyable_v<G1Jacobian>);
     static_assert(sizeof(G2Jacobian) == 288 && std::is_trivially_copyable_v<G2Jacobian>);

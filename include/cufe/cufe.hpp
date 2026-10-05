@@ -5,6 +5,7 @@
 #include <cufe/engine.hpp>
 #include <cufe/errors.hpp>
 #include <cufe/io.hpp>
+#include <cufe/vec.hpp>
 #include <cufe/vector.hpp>
 
 #endif

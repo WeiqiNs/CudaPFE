@@ -20,4 +20,13 @@ protected:
     }
 };
 
+template <class T, cufe::Engine E>
+struct Case{
+    using Value = T;
+    using Engine = E;
+};
+
+template <class C>
+class CaseTest : public EngineTest<typename C::Engine>{};
+
 #endif

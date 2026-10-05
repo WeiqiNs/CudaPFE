@@ -18,6 +18,8 @@ namespace cufe::detail{
 
         [[nodiscard]] cudaStream_t stream() const{ return stream_; }
 
+        void synchronize() const;
+
     private:
         GpuRuntime();
 

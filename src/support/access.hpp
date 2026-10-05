@@ -2,6 +2,8 @@
 #define CUFE_SUPPORT_ACCESS_HPP
 
 #include <bit>
+#include <memory>
+#include <utility>
 #include <cufe/core.hpp>
 
 namespace cufe::detail{
@@ -15,6 +17,12 @@ namespace cufe::detail{
             x.words_ = std::bit_cast<decltype(x.words_)>(element);
             return x;
         }
+
+        template <class Handle>
+        [[nodiscard]] static const auto& storage(const Handle& handle){ return *handle.storage_; }
+
+        template <class Handle, class Storage>
+        [[nodiscard]] static Handle wrap(std::shared_ptr<const Storage> storage){ return Handle(std::move(storage)); }
     };
 }
 
