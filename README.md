@@ -24,6 +24,43 @@ for other GPUs. `-DCUFE_PTXAS_VERBOSE=ON` prints the register and spill report o
 A GPU is not required to build or test: without a CUDA device the GPU test cases report as skipped. Setting
 `CUDA_VISIBLE_DEVICES=` reproduces that on a machine that has one.
 
+## Benchmarks
+
+[`bench/bench_core.cpp`](bench/bench_core.cpp) builds as `cufe_bench` when `-DCUFE_BUILD_BENCH=ON` is set, and needs a
+CUDA device to run:
+
+```bash
+cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_CUDA_COMPILER=/usr/local/cuda/bin/nvcc \
+    -DCUFE_BUILD_BENCH=ON
+cmake --build build --target cufe_bench
+./build/bench/cufe_bench            # full sizes
+./build/bench/cufe_bench --quick    # small sizes, a few seconds
+```
+
+It prints Markdown tables for pairing throughput, multi-pairing latency, batch shapes, fixed-base multiplication,
+matrix inversion and product, and discrete-log tables, each comparing the Gpu engine with the Cpu engine and with blst
+on one core and on every hardware thread. The header names the GPU, its SM count, the CPU thread count, the build type
+and the placement thresholds compiled in. Every timing is the median of several runs after a warm-up, and every table
+checks a result of each engine against blst (or, for matrices and discrete logs, against an independent answer) and
+aborts on a mismatch. Each table's caption states when a baseline is timed on a sample and scaled.
+
+### Calibrating the host placement
+
+On the Gpu engine, `pair_segments` moves tiny workloads to the host: shapes below `CUFE_HOST_MILLER_BELOW` pairs run
+entirely on the host, and shapes below `CUFE_HOST_FINAL_EXP_BELOW` segments run only their final exponentiations there.
+The defaults are the cache variables in `CMakeLists.txt`, chosen from measurements on one GPU; recalibrate for another:
+
+1. Build a device-only copy with `-DCUFE_HOST_MILLER_BELOW=0 -DCUFE_HOST_FINAL_EXP_BELOW=0` and run
+   `cufe_bench --placement-sweep`. It times every shape of S segments of n pairs (powers of two up to 256, at most 1024
+   pairs) on the Gpu and Cpu engines. The smallest pair count at which the Gpu engine wins is the Miller threshold.
+2. Build a second copy with `-DCUFE_HOST_MILLER_BELOW=0` and a `CUFE_HOST_FINAL_EXP_BELOW` above 256, so the Gpu
+   engine always finishes on the host, and run the sweep again. Comparing its Gpu column with the device-only one gives
+   the segment count at which device final exponentiation starts to win.
+3. Configure the real build with the two measured values.
+
+The block sizes of the pairing kernels are the `threads` constants on `MillerItemOp` and `FinalExpOp` in
+`src/pairing/multi_pair.cu`; compare tables 1 and 2 across candidate values when tuning them for a new GPU.
+
 ## License
 
 LibCuFE is licensed under the Apache License 2.0.

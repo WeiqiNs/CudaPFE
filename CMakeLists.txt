@@ -21,9 +21,10 @@ if (PROJECT_IS_TOP_LEVEL AND NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TY
 endif ()
 
 option(CUFE_BUILD_TESTS "Build the LibCuFE test suite" ${PROJECT_IS_TOP_LEVEL})
+option(CUFE_BUILD_BENCH "Build the LibCuFE benchmark in bench/" OFF)
 option(CUFE_PTXAS_VERBOSE "Print ptxas register and spill reports for every kernel" OFF)
-set(CUFE_HOST_MILLER_BELOW 64 CACHE STRING "Gpu pair_segments runs everything on the host below this many pairs")
-set(CUFE_HOST_FINAL_EXP_BELOW 32 CACHE STRING "Gpu pair_segments runs final exponentiations on the host below this many segments")
+set(CUFE_HOST_MILLER_BELOW 32 CACHE STRING "Gpu pair_segments runs everything on the host below this many pairs")
+set(CUFE_HOST_FINAL_EXP_BELOW 24 CACHE STRING "Gpu pair_segments runs final exponentiations on the host below this many segments")
 
 include(GNUInstallDirs)
 find_package(CUDAToolkit REQUIRED)
@@ -58,6 +59,10 @@ target_link_libraries(cufe_core PRIVATE $<BUILD_INTERFACE:cufe_internal> PUBLIC 
 set_target_properties(cufe_core PROPERTIES EXPORT_NAME core POSITION_INDEPENDENT_CODE ON)
 
 include(cmake/CuFEInstall.cmake)
+
+if (CUFE_BUILD_BENCH)
+    add_subdirectory(bench)
+endif ()
 
 if (CUFE_BUILD_TESTS)
     enable_testing()
