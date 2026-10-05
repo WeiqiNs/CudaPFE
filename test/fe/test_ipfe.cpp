@@ -1,8 +1,6 @@
 #include <cstddef>
 #include <cstdint>
 #include <optional>
-#include <random>
-#include <vector>
 #include <gtest/gtest.h>
 #include "scheme_types.hpp"
 
@@ -10,24 +8,12 @@ using cufe::IPFE::IntMatrix;
 using cufe::IPFE::IntVec;
 
 namespace{
-    using Results = std::vector<std::optional<std::int64_t>>;
-
-    constexpr cufe::Range kRange{-100, 100};
+    constexpr std::int64_t kEntryBound = 5;
 
     std::int64_t inner_product(const IntVec& x, const IntVec& y){
         std::int64_t total = 0;
         for (std::size_t i = 0; i < x.size(); ++i) total += x[i] * y[i];
         return total;
-    }
-
-    IntMatrix random_rows(const std::size_t count, const std::size_t length){
-        static std::mt19937_64 generator(20261005);
-        std::uniform_int_distribution<std::int64_t> entry(-5, 5);
-        IntMatrix rows(count, IntVec(length));
-        for (auto& row : rows){
-            for (auto& value : row) value = entry(generator);
-        }
-        return rows;
     }
 
     Results pairwise_products(const IntMatrix& functions, const IntMatrix& messages){
@@ -38,7 +24,7 @@ namespace{
 }
 
 template <class Scheme>
-class InnerProductTest : public SchemeTest<Scheme>{};
+class InnerProductTest : public CaseTest<Scheme>{};
 
 TYPED_TEST_SUITE(InnerProductTest, InnerProductSchemes);
 
@@ -69,7 +55,7 @@ TYPED_TEST(InnerProductTest, DecryptsManyCiphertextsUnderOneKey){
     const auto msk = TypeParam::setup(4);
     const auto decrypt = TypeParam::decryptor(msk, kRange);
     const IntVec function{3, -1, 0, 2};
-    const auto messages = random_rows(12, 4);
+    const auto messages = random_rows(12, 4, kEntryBound);
     Results expected;
     for (const auto& message : messages) expected.push_back(inner_product(function, message));
 
@@ -79,8 +65,8 @@ TYPED_TEST(InnerProductTest, DecryptsManyCiphertextsUnderOneKey){
 TYPED_TEST(InnerProductTest, DecryptsABatchPairwise){
     const auto msk = TypeParam::setup(4);
     const auto decrypt = TypeParam::decryptor(msk, kRange);
-    const auto functions = random_rows(16, 4);
-    const auto messages = random_rows(16, 4);
+    const auto functions = random_rows(16, 4, kEntryBound);
+    const auto messages = random_rows(16, 4, kEntryBound);
 
     EXPECT_EQ(decrypt(keygen(msk, functions), enc(msk, messages)), pairwise_products(functions, messages));
 }

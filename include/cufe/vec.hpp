@@ -75,7 +75,7 @@ namespace cufe{
 
     template <class T, Engine E>
     struct Segments{
-        const Vec<T, E>& values;
+        Vec<T, E> values;
         std::size_t length;
         Spread spread = Spread::per_segment;
     };

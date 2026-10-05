@@ -65,19 +65,20 @@ as `cufe_bench_fe` when `-DCUFE_BUILD_BENCH=ON` is set; both need a CUDA device 
 ```bash
 cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_CUDA_COMPILER=/usr/local/cuda/bin/nvcc \
     -DCUFE_BUILD_BENCH=ON
-cmake --build build --target cufe_bench
+cmake --build build --target cufe_bench cufe_bench_fe
 ./build/bench/cufe_bench            # full sizes
 ./build/bench/cufe_bench --quick    # small sizes, a few seconds
 ./build/bench/cufe_bench_fe         # every FE scheme; --quick for small sizes
 ```
 
-It prints Markdown tables for pairing throughput, multi-pairing latency, batch shapes, fixed-base multiplication,
-matrix inversion and product, and discrete-log tables. Each table compares the Gpu engine with whichever of the Cpu
-engine, blst on one core and blst on every hardware thread its columns name. The header names the GPU, its SM count,
-the CPU thread count, the build type and the placement thresholds compiled in. Every timing is the median of several
-runs after a warm-up, except that a case whose warm-up exceeds the cut-off stated in the header reports that single run.
-Every table checks a result of the Gpu engine against blst (or, for matrices and discrete logs, against an independent
-answer) and aborts on a mismatch. Each table's caption states when a baseline is timed on a sample and scaled.
+`cufe_bench` prints Markdown tables for pairing throughput, multi-pairing latency, batch shapes, fixed-base
+multiplication, matrix inversion and product, and discrete-log tables. Each table compares the Gpu engine with whichever
+of the Cpu engine, blst on one core and blst on every hardware thread its columns name. The header names the GPU, its SM
+count, the CPU thread count, the build type and the placement thresholds compiled in. Every timing is the median of
+several runs after a warm-up, except that a case whose warm-up exceeds the cut-off stated in the header reports that
+single run. Every table checks a result of the Gpu engine against blst (or, for matrices and discrete logs, against an
+independent answer) and aborts on a mismatch. Each table's caption states when a baseline is timed on a sample and
+scaled.
 
 `cufe_bench_fe` prints LibPFE's table (Setup, KeyGen, Enc, Dec, Prepare and Prepared Dec, in ms per call) for every
 scheme on both engines, once for single key/ciphertext pairs at growing n and once for batches. Each call handles the

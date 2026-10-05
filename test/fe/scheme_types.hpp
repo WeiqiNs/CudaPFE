@@ -1,33 +1,33 @@
 #ifndef CUFE_TEST_FE_SCHEME_TYPES_HPP
 #define CUFE_TEST_FE_SCHEME_TYPES_HPP
 
-#include <tuple>
-#include <utility>
+#include <cstddef>
+#include <cstdint>
+#include <optional>
+#include <random>
+#include <vector>
 #include <gtest/gtest.h>
 #include <support/engines.hpp>
 #include "schemes.hpp"
 
-template <class Tuple>
-struct AsTypes;
+using Results = std::vector<std::optional<std::int64_t>>;
 
-template <class... Ts>
-struct AsTypes<std::tuple<Ts...>>{
-    using type = ::testing::Types<Ts...>;
-};
-
-template <template <cufe::Engine> class Scheme, cufe::Engine... Es>
-using Instances = std::tuple<Scheme<Es>...>;
+inline constexpr cufe::Range kRange{-100, 100};
 
 template <template <cufe::Engine> class... Schemes>
-struct OnEveryEngine{
-    using type = typename AsTypes<
-        decltype(std::tuple_cat(std::declval<Instances<Schemes, cufe::Cpu, cufe::Gpu>>()...))>::type;
-};
+using OnEveryEngine = ::testing::Types<Schemes<cufe::Cpu>..., Schemes<cufe::Gpu>...>;
 
-template <class Scheme>
-class SchemeTest : public EngineTest<typename Scheme::Engine>{};
+using InnerProductSchemes = OnEveryEngine<Bjk, Tao, Kim, Lin, Kks, Opt>;
+using QuadraticSchemes = OnEveryEngine<Bcfg, Sgp>;
 
-using InnerProductSchemes = OnEveryEngine<Bjk, Tao, Kim, Lin, Kks, Opt>::type;
-using QuadraticSchemes = OnEveryEngine<Bcfg, Sgp>::type;
+inline cufe::IPFE::IntMatrix random_rows(const std::size_t count, const std::size_t length, const std::int64_t bound){
+    static std::mt19937_64 generator(20261005);
+    std::uniform_int_distribution<std::int64_t> entry(-bound, bound);
+    cufe::IPFE::IntMatrix rows(count, cufe::IPFE::IntVec(length));
+    for (auto& row : rows){
+        for (auto& value : row) value = entry(generator);
+    }
+    return rows;
+}
 
 #endif
