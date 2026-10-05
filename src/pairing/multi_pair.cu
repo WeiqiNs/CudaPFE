@@ -40,6 +40,8 @@ namespace cufe{
             }
         };
 
+        static_assert(detail::kMaxPairsPerItem <= detail::MaskedPairs::capacity);
+
         struct MillerItemOp{
             detail::ItemPlan plan;
             const detail::G1Affine* ps;
@@ -52,7 +54,11 @@ namespace cufe{
                 const auto p = detail::segment_offset(plan.shape, plan.shape.p, item.segment) + item.first;
                 const auto q = detail::segment_offset(plan.shape, plan.shape.q, item.segment) + item.first;
                 const detail::PreparedPairs pairs{ps + p, qs + q, lines + q * detail::kLineCount, item.count};
+#ifdef __CUDA_ARCH__
+                out[i] = detail::miller(detail::MaskedPairs::gather(pairs));
+#else
                 out[i] = detail::miller(pairs);
+#endif
             }
         };
 

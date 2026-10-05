@@ -101,6 +101,33 @@ namespace cufe::detail{
         }
     };
 
+    struct MaskedPairs{
+        static constexpr std::size_t capacity = 32;
+
+        const G1Affine* ps;
+        const Line* lines;
+        std::size_t size;
+        std::uint32_t mask;
+
+        [[nodiscard]] CUFE_HD static MaskedPairs gather(const PreparedPairs& pairs){
+            MaskedPairs masked{pairs.ps, pairs.lines, pairs.size, 0};
+            for (std::size_t i = 0; i < pairs.size; ++i){
+                if (pairs.live(i)) masked.mask |= std::uint32_t{1} << i;
+            }
+            return masked;
+        }
+
+        [[nodiscard]] CUFE_HD std::size_t count() const{ return size; }
+
+        [[nodiscard]] CUFE_HD bool live(const std::size_t i) const{ return (mask >> i) & 1; }
+
+        [[nodiscard]] CUFE_HD G1Affine px2(const std::size_t i) const{ return detail::px2(ps[i]); }
+
+        [[nodiscard]] CUFE_HD const Line& line(const std::size_t i, const std::size_t step) const{
+            return lines[i * kLineCount + step];
+        }
+    };
+
     [[nodiscard]] CUFE_HD Line evaluate(const Line& line, const G1Affine& px2){
         return {line.c0, line.c1 * px2.x, line.c2 * px2.y};
     }
