@@ -1,10 +1,5 @@
-#include <array>
-#include <bit>
-#include <concepts>
 #include <cstddef>
-#include <cstdint>
 #include <span>
-#include <string>
 #include <vector>
 #include <support/engines.hpp>
 #include <support/oracle.hpp>
@@ -54,20 +49,6 @@ namespace{
         CUFE_HD void operator()(const std::size_t i) const{ results[i] = evaluate(inputs[i]); }
     };
 
-    std::array<std::uint8_t, 32> le_bytes(const Fr& k){ return std::bit_cast<std::array<std::uint8_t, 32>>(k.canonical()); }
-
-    template <class F>
-    Affine<F> blst_affine(const Blst<Jacobian<F>>& p){
-        return from_blst<Affine<F>>(blst_result(CurveOracle<F>::to_affine, p));
-    }
-
-    template <class F>
-    Blst<Jacobian<F>> blst_mult(const Blst<Jacobian<F>>& p, const Fr& k){
-        Blst<Jacobian<F>> product;
-        CurveOracle<F>::mult(&product, &p, le_bytes(k).data(), 255);
-        return product;
-    }
-
     template <class F>
     CurveResults<F> blst_evaluate(const CurveInput<F>& in){
         using O = CurveOracle<F>;
@@ -86,15 +67,6 @@ namespace{
     }
 
     template <class F>
-    std::vector<Jacobian<F>> random_points(const std::size_t count){
-        std::vector<Jacobian<F>> points;
-        for (const auto& k : field_samples<FrParams>(count)){
-            points.push_back(from_blst<Jacobian<F>>(blst_mult<F>(*CurveOracle<F>::generator(), k)));
-        }
-        return points;
-    }
-
-    template <class F>
     std::vector<CurveInput<F>> curve_inputs(){
         const auto points = random_points<F>(kRandomPoints);
         const auto scalars = field_samples<FrParams>(kRandomPoints + 1);
@@ -102,37 +74,17 @@ namespace{
         for (std::size_t i = 0; i < points.size(); ++i){
             const auto& p = points[i];
             const auto normalized = from_affine(to_affine(p));
-            const auto q = i % 4 == 1 ? normalized : i % 4 == 2 ? neg(normalized) : points[(i + 1) % points.size()];
+            const auto& next = points[(i + 1) % points.size()];
+            const auto q = i % 4 == 1 ? normalized : i % 4 == 2 ? neg(normalized) : next;
             inputs.push_back({p, q, scalars[i + 1]});
         }
         return inputs;
-    }
-
-    template <class F>
-    Affine<F> first_point_outside_subgroup(){
-        using O = CurveOracle<F>;
-        for (std::uint8_t x = 1;; ++x){
-            std::array<std::uint8_t, O::compressed_size> bytes{};
-            bytes.front() = 0x80;
-            bytes.back() = x;
-            Blst<Affine<F>> point;
-            if (O::uncompress(&point, bytes.data()) == BLST_SUCCESS && !O::in_group(&point)){
-                return from_blst<Affine<F>>(point);
-            }
-        }
     }
 }
 
 template <class F>
 class CurveTest : public ::testing::Test{};
 
-class SideNames{
-public:
-    template <class F>
-    static std::string GetName(int){ return std::same_as<F, Fp> ? "G1" : "G2"; }
-};
-
-using Sides = ::testing::Types<Fp, Fp2>;
 TYPED_TEST_SUITE(CurveTest, Sides, SideNames);
 
 TYPED_TEST(CurveTest, HostMatchesBlst){

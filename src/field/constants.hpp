@@ -15,6 +15,8 @@ namespace cufe::detail{
 
     inline constexpr Words<6> kFpInverseExponent = sub_word(kP, 2);
     inline constexpr Words<6> kFpSqrtExponent = shift_right(add_word(kP, 1), 2);
+    inline constexpr Words<6> kFp2SqrtExponent = shift_right(sub_word(kP, 3), 2);
+    inline constexpr Words<6> kFpHalfExponent = shift_right(sub_word(kP, 1), 1);
     inline constexpr Words<4> kFrInverseExponent = sub_word(kR, 2);
 
     inline constexpr Words<6> kFpMontgomeryOne{
