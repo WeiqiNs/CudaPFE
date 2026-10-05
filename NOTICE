@@ -1,0 +1,10 @@
+LibCuFE
+Copyright 2026 Weiqi Feng
+
+This product includes software developed by Supranational LLC, licensed under the Apache License, Version 2.0:
+
+- sppark (https://github.com/supranational/sppark). The files under third_party/sppark are vendored unmodified;
+  third_party/sppark/README.md records the upstream commit.
+- blst (https://github.com/supranational/blst). blst is fetched at build time and installed as the cufe_blst library.
+  The extension-field, curve and pairing algorithms and constants in src/field, src/curve and src/pairing are ported
+  from blst.
