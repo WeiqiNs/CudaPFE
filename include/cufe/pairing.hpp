@@ -8,8 +8,6 @@
 #include "vec.hpp"
 
 namespace cufe{
-    enum class Spread{ per_segment, shared };
-
     struct PairShape{
         std::size_t segments;
         std::size_t length;

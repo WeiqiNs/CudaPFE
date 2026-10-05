@@ -2,6 +2,7 @@
 #define CUFE_ENGINE_HPP
 
 #include <concepts>
+#include <cstddef>
 
 namespace cufe{
     struct Cpu{};
@@ -12,6 +13,8 @@ namespace cufe{
     concept Engine = std::same_as<E, Cpu> || std::same_as<E, Gpu>;
 
     [[nodiscard]] bool gpu_available();
+
+    [[nodiscard]] std::size_t gpu_free_memory();
 }
 
 #endif

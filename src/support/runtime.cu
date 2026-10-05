@@ -1,3 +1,4 @@
+#include <cstddef>
 #include <string>
 #include <cufe/engine.hpp>
 #include "support/runtime.hpp"
@@ -38,5 +39,13 @@ namespace cufe{
         } catch (const DeviceError&){
             return false;
         }
+    }
+
+    std::size_t gpu_free_memory(){
+        detail::GpuRuntime::require();
+        std::size_t free = 0;
+        std::size_t total = 0;
+        detail::check(cudaMemGetInfo(&free, &total), "cudaMemGetInfo");
+        return free;
     }
 }

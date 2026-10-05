@@ -108,6 +108,29 @@ TYPED_TEST(PointVecTest, RejectsMismatchedSizes){
     EXPECT_THROW((void)(three * scalars), ShapeError);
 }
 
+TYPED_TEST(PointVecTest, ConcatJoinsTheSegmentsOfEveryPart){
+    using P = typename TypeParam::Value;
+    using E = typename TypeParam::Engine;
+    using V = Vec<P, E>;
+    constexpr std::size_t segments = 4;
+    constexpr std::size_t length = 3;
+    const auto own = values_with_neutral_ends<P>(segments * length);
+    const std::vector shared{P::random(), P::random()};
+    const auto single = values_with_neutral_ends<P>(segments);
+    std::vector<P> expected;
+    for (std::size_t s = 0; s < segments; ++s){
+        expected.insert(expected.end(), own.begin() + s * length, own.begin() + (s + 1) * length);
+        expected.insert(expected.end(), shared.begin(), shared.end());
+        expected.push_back(single[s]);
+    }
+
+    const auto joined = concat<P, E>(segments, {{V::upload(own), length}, {V::upload(shared), 2, Spread::shared},
+        {V::upload(single), 1}});
+    EXPECT_EQ(joined.download(), expected);
+    EXPECT_TRUE((concat<P, E>(0, {{V(), length}, {V::upload(shared), 2, Spread::shared}}).empty()));
+    EXPECT_THROW((void)(concat<P, E>(segments, {{V::upload(shared), 1}})), ShapeError);
+}
+
 template <class E>
 class GtVecTest : public EngineTest<E>{};
 

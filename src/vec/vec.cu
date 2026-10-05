@@ -1,4 +1,5 @@
 #include <cstddef>
+#include <initializer_list>
 #include <limits>
 #include <memory>
 #include <span>
@@ -84,17 +85,25 @@ namespace cufe{
             }
         };
 
+        CUFE_HD constexpr std::size_t segment_start(const Spread spread, const std::size_t segment, const std::size_t length){
+            return spread == Spread::shared ? 0 : segment * length;
+        }
+
         template <class F>
         struct MsmTermOp{
             const detail::Affine<F>* bases;
             const detail::Fr* scalars;
-            Shape shape;
+            MsmShape shape;
             detail::Jacobian<F>* out;
 
             CUFE_HD void operator()(const std::size_t t) const{
-                const auto row = t % shape.rows;
-                const auto col = t / shape.rows;
-                out[t] = detail::mul(detail::from_affine(bases[row]), scalars[row * shape.cols + col]);
+                const auto rows = shape.shape.rows;
+                const auto cols = shape.shape.cols;
+                const auto output = t / rows;
+                const auto segment = output / cols;
+                const auto base = segment_start(shape.bases, segment, rows) + t % rows;
+                const auto scalar = segment_start(shape.scalars, segment, rows * cols) + t % rows * cols + output % cols;
+                out[t] = detail::mul(detail::from_affine(bases[base]), scalars[scalar]);
             }
         };
 
@@ -113,18 +122,35 @@ namespace cufe{
             CUFE_HD void operator()(const std::size_t i) const{ out[i] = detail::to_affine(in[i]); }
         };
 
-        void require_msm_shape(const std::size_t bases, const Shape& shape){
-            if (shape.rows != bases){
-                throw ShapeError("msm needs one scalar row per base, got " + std::to_string(shape.rows) + " rows for "
-                    + std::to_string(bases) + " bases");
+        template <class P>
+        struct PlaceOp{
+            const P* in;
+            std::size_t length;
+            Spread spread;
+            std::size_t offset;
+            std::size_t width;
+            P* out;
+
+            CUFE_HD void operator()(const std::size_t t) const{
+                const auto segment = t / length;
+                out[segment * width + offset + t % length] = in[segment_start(spread, segment, length) + t % length];
             }
+        };
+
+        std::size_t product(const std::size_t x, const std::size_t y, const char* operation){
+            if (x != 0 && y > std::numeric_limits<std::size_t>::max() / x){
+                throw ShapeError(std::string(operation) + " shape of " + std::to_string(x) + " x " + std::to_string(y)
+                    + " overflows");
+            }
+            return x * y;
         }
 
-        void require_msm_scalars(const std::size_t scalars, const Shape& shape){
-            const bool overflows = shape.rows != 0 && shape.cols > std::numeric_limits<std::size_t>::max() / shape.rows;
-            if (overflows || scalars != shape.rows * shape.cols){
-                throw ShapeError("msm needs " + std::to_string(shape.rows) + " x " + std::to_string(shape.cols)
-                    + " scalars, got " + std::to_string(scalars));
+        void require_count(const std::size_t count, const Spread spread, const std::size_t segments,
+            const std::size_t length, const char* what){
+            const auto expected = spread == Spread::shared ? length : product(segments, length, what);
+            if (count != expected){
+                throw ShapeError(std::string(what) + " needs " + std::to_string(expected) + " for its shape, got "
+                    + std::to_string(count));
             }
         }
 
@@ -207,17 +233,39 @@ namespace cufe{
     }
 
     template <class G, Engine E> requires detail::GroupPoint<G>
-    Vec<G, E> msm(const Vec<G, E>& bases, const Vec<Zp, E>& scalars, const Shape& shape){
+    Vec<G, E> msm(const Vec<G, E>& bases, const Vec<Zp, E>& scalars, const MsmShape& shape){
         using F = FieldOf<G>;
-        require_msm_shape(bases.size(), shape);
-        require_msm_scalars(scalars.size(), shape);
-        if (shape.rows == 0) return Vec<G, E>::upload(std::vector<G>(shape.cols));
+        const auto [rows, cols] = shape.shape;
+        require_count(bases.size(), shape.bases, shape.segments, rows, "msm bases");
+        require_count(scalars.size(), shape.scalars, shape.segments, product(rows, cols, "msm"), "msm scalars");
+        const auto outputs = product(shape.segments, cols, "msm");
+        if (rows == 0) return Vec<G, E>::upload(std::vector<G>(outputs));
 
-        Buffer<detail::Jacobian<F>, E> terms(shape.rows * shape.cols);
+        Buffer<detail::Jacobian<F>, E> terms(product(outputs, rows, "msm"));
         detail::for_each<E>(terms.size(), MsmTermOp<F>{data(bases), data(scalars), shape, terms.data()});
         const auto sums = detail::reduce_segments<E, detail::Jacobian<F>>(
-            std::move(terms), detail::Reduction{shape.cols, shape.rows}, JacobianSum{});
-        return generate<G, E>(shape.cols, [&](auto* out){ return ToAffineOp<F>{sums.data(), out}; });
+            std::move(terms), detail::Reduction{outputs, rows}, JacobianSum{});
+        return generate<G, E>(outputs, [&](auto* out){ return ToAffineOp<F>{sums.data(), out}; });
+    }
+
+    template <class G, Engine E> requires detail::GroupPoint<G>
+    Vec<G, E> concat(const std::size_t segments, const std::initializer_list<Segments<G, E>> parts){
+        std::size_t width = 0;
+        for (const auto& part : parts){
+            require_count(part.values.size(), part.spread, segments, part.length, "concat part");
+            width += part.length;
+        }
+        Buffer<ElementOf<G>, E> out(product(segments, width, "concat"));
+        std::size_t offset = 0;
+        for (const auto& part : parts){
+            detail::for_each<E>(segments * part.length, PlaceOp<ElementOf<G>>{
+                .in = data(part.values), .length = part.length, .spread = part.spread, .offset = offset, .width = width,
+                .out = out.data()
+            });
+            offset += part.length;
+        }
+        detail::finish<E>();
+        return detail::vec<G, E>(std::move(out));
     }
 
     template class Vec<Zp, Cpu>;
@@ -233,8 +281,12 @@ namespace cufe{
     template Vec<G1, Gpu> mul_generator<G1, Gpu>(const Vec<Zp, Gpu>&);
     template Vec<G2, Cpu> mul_generator<G2, Cpu>(const Vec<Zp, Cpu>&);
     template Vec<G2, Gpu> mul_generator<G2, Gpu>(const Vec<Zp, Gpu>&);
-    template Vec<G1, Cpu> msm<G1, Cpu>(const Vec<G1, Cpu>&, const Vec<Zp, Cpu>&, const Shape&);
-    template Vec<G1, Gpu> msm<G1, Gpu>(const Vec<G1, Gpu>&, const Vec<Zp, Gpu>&, const Shape&);
-    template Vec<G2, Cpu> msm<G2, Cpu>(const Vec<G2, Cpu>&, const Vec<Zp, Cpu>&, const Shape&);
-    template Vec<G2, Gpu> msm<G2, Gpu>(const Vec<G2, Gpu>&, const Vec<Zp, Gpu>&, const Shape&);
+    template Vec<G1, Cpu> msm<G1, Cpu>(const Vec<G1, Cpu>&, const Vec<Zp, Cpu>&, const MsmShape&);
+    template Vec<G1, Gpu> msm<G1, Gpu>(const Vec<G1, Gpu>&, const Vec<Zp, Gpu>&, const MsmShape&);
+    template Vec<G2, Cpu> msm<G2, Cpu>(const Vec<G2, Cpu>&, const Vec<Zp, Cpu>&, const MsmShape&);
+    template Vec<G2, Gpu> msm<G2, Gpu>(const Vec<G2, Gpu>&, const Vec<Zp, Gpu>&, const MsmShape&);
+    template Vec<G1, Cpu> concat<G1, Cpu>(std::size_t, std::initializer_list<Segments<G1, Cpu>>);
+    template Vec<G1, Gpu> concat<G1, Gpu>(std::size_t, std::initializer_list<Segments<G1, Gpu>>);
+    template Vec<G2, Cpu> concat<G2, Cpu>(std::size_t, std::initializer_list<Segments<G2, Cpu>>);
+    template Vec<G2, Gpu> concat<G2, Gpu>(std::size_t, std::initializer_list<Segments<G2, Gpu>>);
 }

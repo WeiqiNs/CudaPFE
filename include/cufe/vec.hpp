@@ -3,6 +3,7 @@
 
 #include <concepts>
 #include <cstddef>
+#include <initializer_list>
 #include <memory>
 #include <span>
 #include <vector>
@@ -15,6 +16,15 @@ namespace cufe{
         std::size_t cols;
 
         friend bool operator==(const Shape& x, const Shape& y) = default;
+    };
+
+    enum class Spread{ per_segment, shared };
+
+    struct MsmShape{
+        std::size_t segments;
+        Shape shape;
+        Spread bases = Spread::per_segment;
+        Spread scalars = Spread::per_segment;
     };
 
     namespace detail{
@@ -63,8 +73,18 @@ namespace cufe{
     template <class G, Engine E> requires detail::GroupPoint<G>
     [[nodiscard]] Vec<G, E> mul_generator(const Vec<Zp, E>& scalars);
 
+    template <class T, Engine E>
+    struct Segments{
+        const Vec<T, E>& values;
+        std::size_t length;
+        Spread spread = Spread::per_segment;
+    };
+
     template <class G, Engine E> requires detail::GroupPoint<G>
-    [[nodiscard]] Vec<G, E> msm(const Vec<G, E>& bases, const Vec<Zp, E>& scalars, const Shape& shape);
+    [[nodiscard]] Vec<G, E> msm(const Vec<G, E>& bases, const Vec<Zp, E>& scalars, const MsmShape& shape);
+
+    template <class G, Engine E> requires detail::GroupPoint<G>
+    [[nodiscard]] Vec<G, E> concat(std::size_t segments, std::initializer_list<Segments<G, E>> parts);
 }
 
 #endif
