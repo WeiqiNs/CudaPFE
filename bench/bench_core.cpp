@@ -1,6 +1,4 @@
 #include <algorithm>
-#include <array>
-#include <chrono>
 #include <concepts>
 #include <cstddef>
 #include <cstdint>
@@ -14,18 +12,16 @@
 #include <thread>
 #include <utility>
 #include <vector>
-#include <cuda_runtime.h>
 #include <blst.h>
 #include <cufe/cufe.hpp>
 #include "dlog/bsgs.hpp"
 #include "pairing/plan.hpp"
+#include "timing.hpp"
 
 using namespace cufe;
+using namespace cufe::bench;
 
 namespace{
-    constexpr int kRuns = 5;
-    constexpr double kSingleRunMs = 10000;
-
     struct Sizes{
         std::vector<std::size_t> pairs;
         std::vector<std::size_t> lengths;
@@ -39,11 +35,6 @@ namespace{
         std::uint64_t cpu_dlog_steps;
         std::size_t cpu_pair_limit;
         std::size_t blst_sample;
-    };
-
-    struct Measurement{
-        double ms;
-        int runs;
     };
 
     struct Inputs{
@@ -97,32 +88,6 @@ namespace{
         .cpu_pair_limit = 2000,
         .blst_sample = 64,
     };
-
-    unsigned cpu_threads(){
-        return std::max(std::thread::hardware_concurrency(), 1u);
-    }
-
-    template <class F>
-    double elapsed_ms(F& f){
-        const auto start = std::chrono::steady_clock::now();
-        f();
-        return std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - start).count();
-    }
-
-    template <class F>
-    Measurement measure(F&& f){
-        const auto warm_up = elapsed_ms(f);
-        if (warm_up >= kSingleRunMs) return {warm_up, 1};
-        std::array<double, kRuns> times;
-        for (auto& time : times) time = elapsed_ms(f);
-        std::ranges::sort(times);
-        return {times[kRuns / 2], kRuns};
-    }
-
-    std::string cell(const Measurement& m){
-        const auto value = std::format("{:.2f}", m.ms);
-        return m.runs == 1 ? value + " (1 run)" : value;
-    }
 
     std::string scaled_cell(const Measurement& m, const std::size_t items, const std::size_t measured){
         return cell({m.ms * (static_cast<double>(items) / static_cast<double>(measured)), m.runs});
@@ -258,16 +223,10 @@ namespace{
     }
 
     void print_header(const std::string_view mode){
-        cudaDeviceProp properties{};
-        if (cudaGetDeviceProperties(&properties, 0) != cudaSuccess) throw std::runtime_error("cudaGetDeviceProperties");
-        std::cout << std::format(
-            "# LibCuFE benchmark ({})\n\n"
-            "- GPU: {}, {} SMs\n- CPU threads: {}\n- Build type: {}\n"
-            "- CUFE_HOST_MILLER_BELOW = {}, CUFE_HOST_FINAL_EXP_BELOW = {}\n"
-            "- Median of {} runs after one warm-up; a case whose warm-up exceeds {:.0f} s reports that single run.\n",
-            mode, properties.name, properties.multiProcessorCount, cpu_threads(), CUFE_BENCH_BUILD_TYPE,
-            detail::kHostMillerBelow, detail::kHostFinalExpBelow, kRuns, kSingleRunMs / 1000
-        );
+        std::cout << std::format("# LibCuFE benchmark ({})\n\n", mode) << machine_summary()
+            << std::format("- CUFE_HOST_MILLER_BELOW = {}, CUFE_HOST_FINAL_EXP_BELOW = {}\n", detail::kHostMillerBelow,
+                detail::kHostFinalExpBelow)
+            << timing_summary();
     }
 
     void pairing_throughput(const Sizes& sizes){
