@@ -23,3 +23,4 @@ endfunction()
 
 cufe_add_test(test_toolchain internal/test_toolchain.cu INTERNAL)
 cufe_add_test(test_field internal/test_field.cu INTERNAL)
+cufe_add_test(test_tower internal/test_tower.cu INTERNAL)

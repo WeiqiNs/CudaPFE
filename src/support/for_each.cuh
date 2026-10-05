@@ -30,7 +30,9 @@ namespace cufe::detail{
             if (count == 0) return;
             constexpr auto threads = threads_per_block<Op>();
             const auto blocks = (count + threads - 1) / threads;
-            if (blocks > kMaxBlocks) throw DeviceError("for_each over " + std::to_string(count) + " indices exceeds the grid");
+            if (blocks > kMaxBlocks){
+                throw DeviceError("for_each over " + std::to_string(count) + " indices exceeds the grid");
+            }
             run_each<threads><<<static_cast<unsigned>(blocks), threads, 0, GpuRuntime::require().stream()>>>(count, op);
             check(cudaGetLastError(), "for_each launch");
         }

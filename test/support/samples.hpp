@@ -1,11 +1,14 @@
 #ifndef CUFE_TEST_SAMPLES_HPP
 #define CUFE_TEST_SAMPLES_HPP
 
+#include <algorithm>
+#include <array>
 #include <bit>
 #include <cstddef>
 #include <random>
 #include <vector>
 #include "field/field.hpp"
+#include "field/tower.hpp"
 
 namespace cufe::test{
     template <class Params>
@@ -29,6 +32,19 @@ namespace cufe::test{
         std::vector<detail::Field<Params>> samples;
         for (const auto& words : canonical_samples<Params>(random_count)){
             samples.push_back(detail::Field<Params>::from_canonical(words));
+        }
+        return samples;
+    }
+
+    template <class T>
+    std::vector<T> tower_samples(const std::size_t count){
+        constexpr std::size_t degree = sizeof(T) / sizeof(detail::Fp);
+        const auto coefficients = field_samples<detail::FpParams>(count * degree);
+        std::vector<T> samples;
+        for (std::size_t i = 0; i < count; ++i){
+            std::array<detail::Fp, degree> element;
+            std::copy_n(coefficients.begin() + i * degree, degree, element.begin());
+            samples.push_back(std::bit_cast<T>(element));
         }
         return samples;
     }
