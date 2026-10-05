@@ -10,6 +10,11 @@
 #include "engine.hpp"
 
 namespace cufe{
+    struct Shape{
+        std::size_t rows;
+        std::size_t cols;
+    };
+
     namespace detail{
         template <class T, Engine E>
         struct Storage;
@@ -55,6 +60,9 @@ namespace cufe{
 
     template <class G, Engine E> requires detail::GroupPoint<G>
     [[nodiscard]] Vec<G, E> mul_generator(const Vec<Zp, E>& scalars);
+
+    template <class G, Engine E> requires detail::GroupPoint<G>
+    [[nodiscard]] Vec<G, E> msm(const Vec<G, E>& bases, const Vec<Zp, E>& scalars, const Shape& shape);
 }
 
 #endif

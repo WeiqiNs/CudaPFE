@@ -1,4 +1,5 @@
 #include <cstddef>
+#include <limits>
 #include <memory>
 #include <span>
 #include <stdexcept>
@@ -14,6 +15,8 @@
 #include "support/device_array.hpp"
 #include "support/for_each.cuh"
 #include "support/hd.hpp"
+#include "vec/reduce.cuh"
+#include "vec/reduction.hpp"
 #include "vec/storage.hpp"
 
 namespace cufe{
@@ -21,6 +24,7 @@ namespace cufe{
         using detail::Buffer;
         using detail::data;
         using detail::ElementOf;
+        using detail::FieldOf;
 
         template <class P>
         struct AddOp{
@@ -78,6 +82,50 @@ namespace cufe{
                 out[i] = detail::to_affine(detail::fixed_base_mul(table, scalars[i]));
             }
         };
+
+        template <class F>
+        struct MsmTermOp{
+            const detail::Affine<F>* bases;
+            const detail::Fr* scalars;
+            Shape shape;
+            detail::Jacobian<F>* out;
+
+            CUFE_HD void operator()(const std::size_t t) const{
+                const auto row = t % shape.rows;
+                const auto col = t / shape.rows;
+                out[t] = detail::mul(detail::from_affine(bases[row]), scalars[row * shape.cols + col]);
+            }
+        };
+
+        struct JacobianSum{
+            template <class F>
+            CUFE_HD detail::Jacobian<F> operator()(const detail::Jacobian<F>& p, const detail::Jacobian<F>& q) const{
+                return detail::add(p, q);
+            }
+        };
+
+        template <class F>
+        struct ToAffineOp{
+            const detail::Jacobian<F>* in;
+            detail::Affine<F>* out;
+
+            CUFE_HD void operator()(const std::size_t i) const{ out[i] = detail::to_affine(in[i]); }
+        };
+
+        void require_msm_shape(const std::size_t bases, const Shape& shape){
+            if (shape.rows != bases){
+                throw ShapeError("msm needs one scalar row per base, got " + std::to_string(shape.rows) + " rows for "
+                    + std::to_string(bases) + " bases");
+            }
+        }
+
+        void require_msm_scalars(const std::size_t scalars, const Shape& shape){
+            const bool overflows = shape.rows != 0 && shape.cols > std::numeric_limits<std::size_t>::max() / shape.rows;
+            if (overflows || scalars != shape.rows * shape.cols){
+                throw ShapeError("msm needs " + std::to_string(shape.rows) + " x " + std::to_string(shape.cols)
+                    + " scalars, got " + std::to_string(scalars));
+            }
+        }
 
         template <class F>
         const detail::DeviceArray<detail::Affine<F>>& device_generator_table(){
@@ -160,9 +208,23 @@ namespace cufe{
 
     template <class G, Engine E> requires detail::GroupPoint<G>
     Vec<G, E> mul_generator(const Vec<Zp, E>& scalars){
-        using F = decltype(ElementOf<G>::x);
+        using F = FieldOf<G>;
         const auto* table = engine_generator_table<E, F>();
         return generate<G, E>(scalars.size(), [&](auto* out){ return FixedBaseOp<F>{data(scalars), table, out}; });
+    }
+
+    template <class G, Engine E> requires detail::GroupPoint<G>
+    Vec<G, E> msm(const Vec<G, E>& bases, const Vec<Zp, E>& scalars, const Shape& shape){
+        using F = FieldOf<G>;
+        require_msm_shape(bases.size(), shape);
+        require_msm_scalars(scalars.size(), shape);
+        if (shape.rows == 0) return Vec<G, E>::upload(std::vector<G>(shape.cols));
+
+        Buffer<detail::Jacobian<F>, E> terms(shape.rows * shape.cols);
+        detail::for_each<E>(terms.size(), MsmTermOp<F>{data(bases), data(scalars), shape, terms.data()});
+        const auto sums = detail::reduce_segments<E, detail::Jacobian<F>>(
+            std::move(terms), detail::Reduction{shape.cols, shape.rows}, JacobianSum{});
+        return generate<G, E>(shape.cols, [&](auto* out){ return ToAffineOp<F>{sums.data(), out}; });
     }
 
     template class Vec<Zp, Cpu>;
@@ -178,4 +240,8 @@ namespace cufe{
     template Vec<G1, Gpu> mul_generator<G1, Gpu>(const Vec<Zp, Gpu>&);
     template Vec<G2, Cpu> mul_generator<G2, Cpu>(const Vec<Zp, Cpu>&);
     template Vec<G2, Gpu> mul_generator<G2, Gpu>(const Vec<Zp, Gpu>&);
+    template Vec<G1, Cpu> msm<G1, Cpu>(const Vec<G1, Cpu>&, const Vec<Zp, Cpu>&, const Shape&);
+    template Vec<G1, Gpu> msm<G1, Gpu>(const Vec<G1, Gpu>&, const Vec<Zp, Gpu>&, const Shape&);
+    template Vec<G2, Cpu> msm<G2, Cpu>(const Vec<G2, Cpu>&, const Vec<Zp, Cpu>&, const Shape&);
+    template Vec<G2, Gpu> msm<G2, Gpu>(const Vec<G2, Gpu>&, const Vec<Zp, Gpu>&, const Shape&);
 }

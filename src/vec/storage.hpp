@@ -35,6 +35,9 @@ namespace cufe::detail{
     template <class T>
     using ElementOf = typename DeviceElement<T>::type;
 
+    template <GroupPoint G>
+    using FieldOf = decltype(ElementOf<G>::x);
+
     template <class T, Engine E>
     using Buffer = std::conditional_t<std::same_as<E, Cpu>, std::vector<T>, DeviceArray<T>>;
 
@@ -89,7 +92,7 @@ namespace cufe::detail{
         std::vector<ElementOf<T>> elements;
         elements.reserve(values.size());
         if constexpr (GroupPoint<T>){
-            using F = decltype(ElementOf<T>::x);
+            using F = FieldOf<T>;
             std::vector<Jacobian<F>> jacobians;
             jacobians.reserve(values.size());
             for (const auto& value : values) jacobians.push_back(Access::element<Jacobian<F>>(value));
