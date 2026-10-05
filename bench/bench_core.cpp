@@ -47,20 +47,55 @@ namespace{
     };
 
     struct Inputs{
-        Vec<G1, Gpu> ps;
-        Vec<G2, Gpu> qs;
+        std::vector<G1> ps;
+        std::vector<G2> qs;
         std::vector<blst_p1_affine> blst_ps;
         std::vector<blst_p2_affine> blst_qs;
     };
 
+    struct Timed{
+        Measurement time;
+        Gt first;
+    };
+
+    struct Samples{
+        std::size_t one_core;
+        std::size_t all_cores;
+    };
+
+    struct BlstTimes{
+        Measurement one_core;
+        Measurement all_cores;
+    };
+
     const Sizes kFull{
-        {1000, 10000, 100000}, {10, 100, 1000, 10000}, {100, 1000}, {24, 208}, {1000, 10000, 100000, 1000000},
-        {100, 1000, 5000}, 1000, {20, 32}, {1, 1000}, std::uint64_t{1} << 24, 25000, 1000,
+        .pairs = {1000, 10000, 100000},
+        .lengths = {10, 100, 1000, 10000},
+        .batch_segments = {100, 1000},
+        .batch_lengths = {24, 208},
+        .fixed_base = {1000, 10000, 100000, 1000000},
+        .matrices = {100, 1000, 5000},
+        .cpu_matrix_limit = 1000,
+        .dlog_bits = {20, 32},
+        .dlog_batches = {1, 1000},
+        .cpu_dlog_steps = std::uint64_t{1} << 24,
+        .cpu_pair_limit = 25000,
+        .blst_sample = 1000,
     };
 
     const Sizes kQuick{
-        {100, 1000}, {10, 100}, {10}, {24}, {1000, 10000}, {16, 64}, 64, {16}, {1, 100}, std::uint64_t{1} << 24, 2000,
-        64,
+        .pairs = {100, 1000},
+        .lengths = {10, 100},
+        .batch_segments = {10},
+        .batch_lengths = {24},
+        .fixed_base = {1000, 10000},
+        .matrices = {16, 64},
+        .cpu_matrix_limit = 64,
+        .dlog_bits = {16},
+        .dlog_batches = {1, 100},
+        .cpu_dlog_steps = std::uint64_t{1} << 24,
+        .cpu_pair_limit = 2000,
+        .blst_sample = 64,
     };
 
     unsigned cpu_threads(){
@@ -84,24 +119,49 @@ namespace{
         return {times[kRuns / 2], kRuns};
     }
 
-    std::string cell(const Measurement& m, const double scale = 1){
-        const auto value = std::format("{:.2f}", m.ms * scale);
+    std::string cell(const Measurement& m){
+        const auto value = std::format("{:.2f}", m.ms);
         return m.runs == 1 ? value + " (1 run)" : value;
+    }
+
+    std::string scaled_cell(const Measurement& m, const std::size_t items, const std::size_t measured){
+        return cell({m.ms * (static_cast<double>(items) / static_cast<double>(measured)), m.runs});
     }
 
     std::string rate(const Measurement& m, const std::size_t items){
         return std::format("{:.0f}", static_cast<double>(items) / (m.ms / 1000));
     }
 
+    std::size_t chunk_size(const std::size_t count){
+        return (count + cpu_threads() - 1) / cpu_threads();
+    }
+
     template <class F>
     void parallel_chunks(const std::size_t count, const F& f){
-        const auto threads = cpu_threads();
-        const auto per_thread = (count + threads - 1) / threads;
+        const auto chunk = chunk_size(count);
         std::vector<std::thread> workers;
-        for (std::size_t begin = 0; begin < count; begin += per_thread){
-            workers.emplace_back(f, begin, std::min(count, begin + per_thread));
+        for (std::size_t begin = 0; begin < count; begin += chunk){
+            workers.emplace_back(f, begin, std::min(count, begin + chunk));
         }
         for (auto& worker : workers) worker.join();
+    }
+
+    Samples blst_samples(const std::size_t available, const std::size_t per_core){
+        return {std::min(available, per_core), std::min(available, per_core * cpu_threads())};
+    }
+
+    template <class F>
+    BlstTimes time_blst(const Samples& samples, const F& run){
+        return {
+            measure([&]{
+                for (std::size_t i = 0; i < samples.one_core; ++i) run(i);
+            }),
+            measure([&]{
+                parallel_chunks(samples.all_cores, [&](const std::size_t begin, const std::size_t end){
+                    for (auto i = begin; i < end; ++i) run(i);
+                });
+            }),
+        };
     }
 
     void require_match(const Bytes& ours, const Bytes& theirs, const std::string_view what){
@@ -165,9 +225,9 @@ namespace{
 
     blst_fp12 blst_parallel_multi_pair(const Inputs& inputs, const std::size_t count){
         std::vector<blst_fp12> partials(cpu_threads(), *blst_fp12_one());
-        const auto per_thread = (count + cpu_threads() - 1) / cpu_threads();
+        const auto chunk = chunk_size(count);
         parallel_chunks(count, [&](const std::size_t begin, const std::size_t end){
-            partials[begin / per_thread] = blst_miller_n(inputs, begin, end - begin);
+            partials[begin / chunk] = blst_miller_n(inputs, begin, end - begin);
         });
         auto product = *blst_fp12_one();
         for (const auto& partial : partials) blst_fp12_mul(&product, &product, &partial);
@@ -178,15 +238,23 @@ namespace{
 
     Inputs make_inputs(const std::size_t count, const std::size_t blst_count){
         Inputs inputs;
-        inputs.ps = mul_generator<G1>(Vec<Zp, Gpu>::upload(random_vector(count)));
-        inputs.qs = mul_generator<G2>(Vec<Zp, Gpu>::upload(random_vector(count)));
-        const auto ps = inputs.ps.download();
-        const auto qs = inputs.qs.download();
+        inputs.ps = mul_generator<G1>(Vec<Zp, Gpu>::upload(random_vector(count))).download();
+        inputs.qs = mul_generator<G2>(Vec<Zp, Gpu>::upload(random_vector(count))).download();
         for (std::size_t i = 0; i < std::min(count, blst_count); ++i){
-            inputs.blst_ps.push_back(to_blst(ps[i]));
-            inputs.blst_qs.push_back(to_blst(qs[i]));
+            inputs.blst_ps.push_back(to_blst(inputs.ps[i]));
+            inputs.blst_qs.push_back(to_blst(inputs.qs[i]));
         }
         return inputs;
+    }
+
+    template <Engine E>
+    Timed time_pairing(const Inputs& inputs, const PairShape& shape){
+        const auto pairs = shape.segments * shape.length;
+        const auto ps = Vec<G1, E>::upload(std::span(inputs.ps).first(pairs));
+        const auto qs = Vec<G2, E>::upload(std::span(inputs.qs).first(pairs));
+        Vec<Gt, E> out;
+        const auto time = measure([&]{ out = pair_segments(ps, qs, shape); });
+        return {time, out.at(0)};
     }
 
     void print_header(const std::string_view mode){
@@ -204,61 +272,44 @@ namespace{
 
     void pairing_throughput(const Sizes& sizes){
         const auto largest = sizes.pairs.back();
-        const auto sample = std::min(largest, sizes.blst_sample);
-        const auto parallel_sample = std::min(largest, sizes.blst_sample * cpu_threads());
-        const auto inputs = make_inputs(largest, parallel_sample);
-        const auto host_ps = inputs.ps.download();
-        const auto host_qs = inputs.qs.download();
-        std::vector<blst_fp12> sink(parallel_sample);
-
-        const auto single = measure([&]{
-            for (std::size_t i = 0; i < sample; ++i) sink[i] = blst_pair(inputs.blst_ps[i], inputs.blst_qs[i]);
-        });
-        const auto all = measure([&]{
-            parallel_chunks(parallel_sample, [&](const std::size_t begin, const std::size_t end){
-                for (auto i = begin; i < end; ++i) sink[i] = blst_pair(inputs.blst_ps[i], inputs.blst_qs[i]);
-            });
+        const auto samples = blst_samples(largest, sizes.blst_sample);
+        const auto inputs = make_inputs(largest, samples.all_cores);
+        std::vector<blst_fp12> sink(samples.all_cores);
+        const auto blst = time_blst(samples, [&](const std::size_t i){
+            sink[i] = blst_pair(inputs.blst_ps[i], inputs.blst_qs[i]);
         });
 
         std::cout << std::format(
             "\n## 1. Pairing throughput (S segments of length 1, pairs/s)\n\n"
             "blst columns are measured on {} (1 core) and {} (all cores) pairs.\n\n"
-            "| S | Gpu | blst 1 core | blst all cores |\n| ---: | ---: | ---: | ---: |\n", sample, parallel_sample
+            "| S | Gpu | blst 1 core | blst all cores |\n| ---: | ---: | ---: | ---: |\n",
+            samples.one_core, samples.all_cores
         );
         for (const auto s : sizes.pairs){
-            const auto ps = Vec<G1, Gpu>::upload(std::span(host_ps).first(s));
-            const auto qs = Vec<G2, Gpu>::upload(std::span(host_qs).first(s));
-            Vec<Gt, Gpu> out;
-            const auto gpu = measure([&]{ out = pair_segments(ps, qs, PairShape{s, 1}); });
-            require_match(out.at(0).to_bytes(), gt_bytes(sink[0]), "pair_segments<Gpu>");
-            std::cout << std::format("| {} | {} | {} | {} |\n", s, rate(gpu, s), rate(single, sample),
-                rate(all, parallel_sample));
+            const auto gpu = time_pairing<Gpu>(inputs, {s, 1});
+            require_match(gpu.first.to_bytes(), gt_bytes(sink[0]), "pair_segments<Gpu>");
+            std::cout << std::format("| {} | {} | {} | {} |\n", s, rate(gpu.time, s),
+                rate(blst.one_core, samples.one_core), rate(blst.all_cores, samples.all_cores));
         }
     }
 
     void multi_pairing_latency(const Sizes& sizes){
         const auto largest = sizes.lengths.back();
         const auto inputs = make_inputs(largest, largest);
-        const auto host_ps = inputs.ps.download();
-        const auto host_qs = inputs.qs.download();
         std::cout << "\n## 2. Multi-pairing latency (1 segment of n pairs, ms)\n\n"
             "| n | Gpu | Cpu engine | blst 1 core | blst all cores |\n| ---: | ---: | ---: | ---: | ---: |\n";
         for (const auto n : sizes.lengths){
-            const auto gpu_ps = Vec<G1, Gpu>::upload(std::span(host_ps).first(n));
-            const auto gpu_qs = Vec<G2, Gpu>::upload(std::span(host_qs).first(n));
-            const auto cpu_ps = Vec<G1, Cpu>::upload(std::span(host_ps).first(n));
-            const auto cpu_qs = Vec<G2, Cpu>::upload(std::span(host_qs).first(n));
-            Vec<Gt, Gpu> gpu_out;
-            Vec<Gt, Cpu> cpu_out;
+            const PairShape shape{1, n};
+            const auto gpu = time_pairing<Gpu>(inputs, shape);
+            const auto cpu = time_pairing<Cpu>(inputs, shape);
             blst_fp12 single_out;
             blst_fp12 all_out;
-            const auto gpu = measure([&]{ gpu_out = pair_segments(gpu_ps, gpu_qs, PairShape{1, n}); });
-            const auto cpu = measure([&]{ cpu_out = pair_segments(cpu_ps, cpu_qs, PairShape{1, n}); });
             const auto single = measure([&]{ single_out = blst_multi_pair(inputs, 0, n); });
             const auto all = measure([&]{ all_out = blst_parallel_multi_pair(inputs, n); });
-            require_match(gpu_out.at(0).to_bytes(), gt_bytes(single_out), "pair_segments<Gpu>");
-            require_match(cpu_out.at(0).to_bytes(), gt_bytes(all_out), "pair_segments<Cpu>");
-            std::cout << std::format("| {} | {} | {} | {} | {} |\n", n, cell(gpu), cell(cpu), cell(single), cell(all));
+            require_match(gpu.first.to_bytes(), gt_bytes(single_out), "pair_segments<Gpu>");
+            require_match(cpu.first.to_bytes(), gt_bytes(all_out), "pair_segments<Cpu>");
+            std::cout << std::format("| {} | {} | {} | {} | {} |\n", n, cell(gpu.time), cell(cpu.time), cell(single),
+                cell(all));
         }
     }
 
@@ -272,33 +323,20 @@ namespace{
         );
         for (const auto s : sizes.batch_segments){
             for (const auto m : sizes.batch_lengths){
-                const auto per_core = std::min(s, sizes.blst_sample / m + 1);
-                const auto parallel_segments = std::min(s, per_core * cpu_threads());
-                const auto inputs = make_inputs(s * m, parallel_segments * m);
                 const PairShape shape{s, m};
-                Vec<Gt, Gpu> out;
-                const auto gpu = measure([&]{ out = pair_segments(inputs.ps, inputs.qs, shape); });
+                const auto samples = blst_samples(s, sizes.blst_sample / m + 1);
+                const auto inputs = make_inputs(s * m, samples.all_cores * m);
+                const auto gpu = time_pairing<Gpu>(inputs, shape);
+                const auto cpu_cell = s * m <= sizes.cpu_pair_limit ? cell(time_pairing<Cpu>(inputs, shape).time)
+                    : std::string("–");
 
-                std::string cpu_cell = "–";
-                if (s * m <= sizes.cpu_pair_limit){
-                    const auto ps = Vec<G1, Cpu>::upload(inputs.ps.download());
-                    const auto qs = Vec<G2, Cpu>::upload(inputs.qs.download());
-                    cpu_cell = cell(measure([&]{ (void)pair_segments(ps, qs, shape); }));
-                }
-
-                std::vector<blst_fp12> sink(parallel_segments);
-                const auto single = measure([&]{
-                    for (std::size_t g = 0; g < per_core; ++g) sink[g] = blst_multi_pair(inputs, g * m, m);
+                std::vector<blst_fp12> sink(samples.all_cores);
+                const auto blst = time_blst(samples, [&](const std::size_t g){
+                    sink[g] = blst_multi_pair(inputs, g * m, m);
                 });
-                const auto all = measure([&]{
-                    parallel_chunks(parallel_segments, [&](const std::size_t begin, const std::size_t end){
-                        for (auto g = begin; g < end; ++g) sink[g] = blst_multi_pair(inputs, g * m, m);
-                    });
-                });
-                require_match(out.at(0).to_bytes(), gt_bytes(sink[0]), "pair_segments<Gpu>");
-                std::cout << std::format("| {} | {} | {} | {} | {} | {} |\n", s, m, cell(gpu), cpu_cell,
-                    cell(single, static_cast<double>(s) / static_cast<double>(per_core)),
-                    cell(all, static_cast<double>(s) / static_cast<double>(parallel_segments)));
+                require_match(gpu.first.to_bytes(), gt_bytes(sink[0]), "pair_segments<Gpu>");
+                std::cout << std::format("| {} | {} | {} | {} | {} | {} |\n", s, m, cell(gpu.time), cpu_cell,
+                    scaled_cell(blst.one_core, s, samples.one_core), scaled_cell(blst.all_cores, s, samples.all_cores));
             }
         }
     }
@@ -308,12 +346,11 @@ namespace{
         constexpr bool is_g1 = std::same_as<G, G1>;
         const auto largest = sizes.fixed_base.back();
         const auto scalars = random_vector(largest);
-        const auto sample = std::min(largest, sizes.blst_sample);
-        const auto parallel_sample = std::min(largest, sizes.blst_sample * cpu_threads());
+        const auto samples = blst_samples(largest, sizes.blst_sample);
         std::vector<blst_scalar> blst_scalars;
-        for (std::size_t i = 0; i < parallel_sample; ++i) blst_scalars.push_back(to_blst(scalars[i]));
-        std::vector<Bytes> sink(parallel_sample);
-        const auto multiply = [&](const std::size_t i){
+        for (std::size_t i = 0; i < samples.all_cores; ++i) blst_scalars.push_back(to_blst(scalars[i]));
+        std::vector<Bytes> sink(samples.all_cores);
+        const auto blst = time_blst(samples, [&](const std::size_t i){
             Bytes out(G::compressed_size);
             if constexpr (is_g1){
                 blst_p1 p;
@@ -329,14 +366,6 @@ namespace{
                 blst_p2_affine_compress(out.data(), &affine);
             }
             sink[i] = std::move(out);
-        };
-        const auto single = measure([&]{
-            for (std::size_t i = 0; i < sample; ++i) multiply(i);
-        });
-        const auto all = measure([&]{
-            parallel_chunks(parallel_sample, [&](const std::size_t begin, const std::size_t end){
-                for (auto i = begin; i < end; ++i) multiply(i);
-            });
         });
         for (const auto n : sizes.fixed_base){
             const auto gpu_scalars = Vec<Zp, Gpu>::upload(std::span(scalars).first(n));
@@ -344,8 +373,7 @@ namespace{
             const auto gpu = measure([&]{ out = mul_generator<G>(gpu_scalars); });
             require_match(out.at(0).to_bytes(), sink[0], "mul_generator<Gpu>");
             std::cout << std::format("| {} | {} | {} | {} | {} |\n", name, n, cell(gpu),
-                cell(single, static_cast<double>(n) / static_cast<double>(sample)),
-                cell(all, static_cast<double>(n) / static_cast<double>(parallel_sample)));
+                scaled_cell(blst.one_core, n, samples.one_core), scaled_cell(blst.all_cores, n, samples.all_cores));
         }
     }
 
@@ -437,23 +465,14 @@ namespace{
         constexpr std::size_t kLargest = 256;
         constexpr std::size_t kPairLimit = 1024;
         const auto inputs = make_inputs(kPairLimit, 0);
-        const auto host_ps = inputs.ps.download();
-        const auto host_qs = inputs.qs.download();
         for (std::size_t s = 1; s <= kLargest; s *= 2){
             for (std::size_t n = 1; n <= kLargest && s * n <= kPairLimit; n *= 2){
                 const PairShape shape{s, n};
-                const auto pairs = s * n;
-                const auto gpu_ps = Vec<G1, Gpu>::upload(std::span(host_ps).first(pairs));
-                const auto gpu_qs = Vec<G2, Gpu>::upload(std::span(host_qs).first(pairs));
-                const auto cpu_ps = Vec<G1, Cpu>::upload(std::span(host_ps).first(pairs));
-                const auto cpu_qs = Vec<G2, Cpu>::upload(std::span(host_qs).first(pairs));
-                Vec<Gt, Gpu> gpu_out;
-                Vec<Gt, Cpu> cpu_out;
-                const auto gpu = measure([&]{ gpu_out = pair_segments(gpu_ps, gpu_qs, shape); });
-                const auto cpu = measure([&]{ cpu_out = pair_segments(cpu_ps, cpu_qs, shape); });
-                if (gpu_out.at(0) != cpu_out.at(0)) throw std::runtime_error("engines disagree in the placement sweep");
-                std::cout << std::format("| {} | {} | {} | {} | {} | {} |\n", s, n, pairs, cell(gpu), cell(cpu),
-                    gpu.ms < cpu.ms ? "Gpu" : "Cpu");
+                const auto gpu = time_pairing<Gpu>(inputs, shape);
+                const auto cpu = time_pairing<Cpu>(inputs, shape);
+                if (gpu.first != cpu.first) throw std::runtime_error("engines disagree in the placement sweep");
+                std::cout << std::format("| {} | {} | {} | {} | {} | {} |\n", s, n, s * n, cell(gpu.time),
+                    cell(cpu.time), gpu.time.ms < cpu.time.ms ? "Gpu" : "Cpu");
             }
         }
     }

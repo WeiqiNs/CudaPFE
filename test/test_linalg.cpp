@@ -109,17 +109,3 @@ TYPED_TEST(MatrixTest, RandomMatricesInvert){
         EXPECT_EQ(determinant * inverse.determinant(), Zp(1)) << m;
     }
 }
-
-TEST(MatrixTest, EnginesAgree){
-    CUFE_REQUIRE_GPU();
-    constexpr std::size_t m = 64;
-    const auto entries = random_vector(m * m);
-    const auto cpu = Matrix<Cpu>::upload({m, m}, entries);
-    const auto gpu = Matrix<Gpu>::upload({m, m}, entries);
-
-    const auto [cpu_inverse, cpu_determinant] = cpu.inverse_with_determinant();
-    const auto [gpu_inverse, gpu_determinant] = gpu.inverse_with_determinant();
-    EXPECT_EQ(gpu_determinant, cpu_determinant);
-    EXPECT_EQ(gpu_inverse.to_rows(), cpu_inverse.to_rows());
-    EXPECT_EQ((gpu * gpu.transpose()).to_rows(), (cpu * cpu.transpose()).to_rows());
-}

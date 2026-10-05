@@ -38,11 +38,12 @@ cmake --build build --target cufe_bench
 ```
 
 It prints Markdown tables for pairing throughput, multi-pairing latency, batch shapes, fixed-base multiplication,
-matrix inversion and product, and discrete-log tables, each comparing the Gpu engine with the Cpu engine and with blst
-on one core and on every hardware thread. The header names the GPU, its SM count, the CPU thread count, the build type
-and the placement thresholds compiled in. Every timing is the median of several runs after a warm-up, and every table
-checks a result of each engine against blst (or, for matrices and discrete logs, against an independent answer) and
-aborts on a mismatch. Each table's caption states when a baseline is timed on a sample and scaled.
+matrix inversion and product, and discrete-log tables. Each table compares the Gpu engine with whichever of the Cpu
+engine, blst on one core and blst on every hardware thread its columns name. The header names the GPU, its SM count,
+the CPU thread count, the build type and the placement thresholds compiled in. Every timing is the median of several
+runs after a warm-up, except that a case whose warm-up exceeds the cut-off stated in the header reports that single run.
+Every table checks a result of the Gpu engine against blst (or, for matrices and discrete logs, against an independent
+answer) and aborts on a mismatch. Each table's caption states when a baseline is timed on a sample and scaled.
 
 ### Calibrating the host placement
 
@@ -58,8 +59,10 @@ The defaults are the cache variables in `CMakeLists.txt`, chosen from measuremen
    the segment count at which device final exponentiation starts to win.
 3. Configure the real build with the two measured values.
 
-The block sizes of the pairing kernels are the `threads` constants on `MillerItemOp` and `FinalExpOp` in
-`src/pairing/multi_pair.cu`; compare tables 1 and 2 across candidate values when tuning them for a new GPU.
+A kernel's block size is its functor's optional `threads` constant, and `threads_per_block` in
+`src/support/for_each.cuh` supplies the default for functors without one. To tune the pairing kernels for a new GPU,
+give `MillerItemOp` and `FinalExpOp` in `src/pairing/multi_pair.cu` a `threads` constant and compare tables 1 and 2
+across candidate values.
 
 ## License
 

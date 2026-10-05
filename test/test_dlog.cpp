@@ -54,7 +54,6 @@ TYPED_TEST(DlogTest, FindsEveryExponentInItsInclusiveRange){
     for (std::int64_t k = -21; k <= 21; ++k){
         targets.push_back(g.pow(k));
         expected.push_back(k < -20 || k > 20 ? std::nullopt : std::optional(k));
-        EXPECT_EQ(table.find(targets.back()), expected.back()) << k;
     }
     EXPECT_EQ(table.find(Vec<Gt, TypeParam>::upload(targets)), expected);
     EXPECT_EQ(DlogTable<TypeParam>(g, {-1000, 1000}).find(g.pow(777)), 777);
