@@ -8,8 +8,10 @@
 #include <cufe/core.hpp>
 #include <cufe/vec.hpp>
 #include "curve/curve.hpp"
+#include "curve/generator_table.hpp"
 #include "field/field.hpp"
 #include "field/tower.hpp"
+#include "support/device_array.hpp"
 #include "support/for_each.cuh"
 #include "support/hd.hpp"
 #include "vec/storage.hpp"
@@ -64,6 +66,29 @@ namespace cufe{
 
             CUFE_HD void operator()(const std::size_t i) const{ out[i] = x[i] * detail::conjugate(y[i]); }
         };
+
+        template <class F>
+        struct FixedBaseOp{
+            const detail::Fr* scalars;
+            const detail::Affine<F>* table;
+            detail::Affine<F>* out;
+
+            CUFE_HD void operator()(const std::size_t i) const{
+                out[i] = detail::to_affine(detail::fixed_base_mul(table, scalars[i]));
+            }
+        };
+
+        template <class F>
+        const detail::DeviceArray<detail::Affine<F>>& device_generator_table(){
+            static const auto table = detail::to_engine<Gpu>(detail::generator_table<F>());
+            return table;
+        }
+
+        template <Engine E, class F>
+        const detail::Affine<F>* engine_generator_table(){
+            if constexpr (std::same_as<E, Cpu>) return detail::generator_table<F>().data();
+            else return device_generator_table<F>().data();
+        }
 
         template <class T, Engine E>
         const ElementOf<T>* data(const Vec<T, E>& values){ return detail::buffer(values).data(); }
@@ -135,6 +160,13 @@ namespace cufe{
         return generate<T, E>(size(), [&](auto* out){ return GtDivOp{data(*this), data(y), out}; });
     }
 
+    template <class G, Engine E> requires detail::GroupPoint<G>
+    Vec<G, E> mul_generator(const Vec<Zp, E>& scalars){
+        using F = decltype(ElementOf<G>::x);
+        const auto* table = engine_generator_table<E, F>();
+        return generate<G, E>(scalars.size(), [&](auto* out){ return FixedBaseOp<F>{data(scalars), table, out}; });
+    }
+
     template class Vec<Zp, Cpu>;
     template class Vec<Zp, Gpu>;
     template class Vec<G1, Cpu>;
@@ -143,4 +175,9 @@ namespace cufe{
     template class Vec<G2, Gpu>;
     template class Vec<Gt, Cpu>;
     template class Vec<Gt, Gpu>;
+
+    template Vec<G1, Cpu> mul_generator<G1, Cpu>(const Vec<Zp, Cpu>&);
+    template Vec<G1, Gpu> mul_generator<G1, Gpu>(const Vec<Zp, Gpu>&);
+    template Vec<G2, Cpu> mul_generator<G2, Cpu>(const Vec<Zp, Cpu>&);
+    template Vec<G2, Gpu> mul_generator<G2, Gpu>(const Vec<Zp, Gpu>&);
 }

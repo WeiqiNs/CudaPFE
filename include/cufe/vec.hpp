@@ -52,6 +52,9 @@ namespace cufe{
 
         std::shared_ptr<const detail::Storage<T, E>> storage_;
     };
+
+    template <class G, Engine E> requires detail::GroupPoint<G>
+    [[nodiscard]] Vec<G, E> mul_generator(const Vec<Zp, E>& scalars);
 }
 
 #endif

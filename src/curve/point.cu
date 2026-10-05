@@ -1,6 +1,7 @@
 #include <cufe/core.hpp>
 #include "curve/curve.hpp"
 #include "curve/encoding.hpp"
+#include "curve/generator_table.hpp"
 #include "field/field.hpp"
 #include "field/tower.hpp"
 #include "support/access.hpp"
@@ -34,12 +35,13 @@ namespace cufe{
 
     template <Side S>
     Point<S> Point<S>::random(){
-        return generator() * Zp::random();
+        return mul_generator(Zp::random());
     }
 
     template <Side S>
     Point<S> Point<S>::mul_generator(const Zp& scalar){
-        return generator() * scalar;
+        const auto& table = detail::generator_table<detail::SideField<S>>();
+        return point<S>(detail::fixed_base_mul(table.data(), Access::element<detail::Fr>(scalar)));
     }
 
     template <Side S>
