@@ -115,8 +115,8 @@ namespace cufe{
             return final_exps<E>(products);
         }
 
-        Vec<Gt, Gpu> pair_on_host(const Vec<G1, Gpu>& ps, const Vec<G2, Gpu>& qs, const PairShape& shape){
-            return to_gpu(pair_prepared(to_cpu(ps), prepare_storage(to_cpu(qs)), shape));
+        Vec<Gt, Gpu> pair_on_host(const Vec<G1, Gpu>& ps, const LineStorage<Cpu>& qs, const PairShape& shape){
+            return to_gpu(pair_prepared(to_cpu(ps), qs, shape));
         }
 
         template <Engine E>
@@ -147,7 +147,9 @@ namespace cufe{
         require_shapes(ps, qs.size(), shape);
         const auto& lines = Access::storage(qs);
         if constexpr (std::same_as<E, Gpu>){
-            if (detail::place(shape) == detail::Placement::host) return pair_on_host(ps, lines.sources, shape);
+            if (detail::place(shape) == detail::Placement::host){
+                return pair_on_host(ps, {to_cpu(lines.sources), detail::to_host(lines.lines)}, shape);
+            }
         }
         return pair_prepared(ps, lines, shape);
     }
@@ -156,7 +158,9 @@ namespace cufe{
     Vec<Gt, E> pair_segments(const Vec<G1, E>& ps, const Vec<G2, E>& qs, const PairShape& shape){
         require_shapes(ps, qs.size(), shape);
         if constexpr (std::same_as<E, Gpu>){
-            if (detail::place(shape) == detail::Placement::host) return pair_on_host(ps, qs, shape);
+            if (detail::place(shape) == detail::Placement::host){
+                return pair_on_host(ps, prepare_storage(to_cpu(qs)), shape);
+            }
         }
         return pair_prepared(ps, prepare_storage(qs), shape);
     }
