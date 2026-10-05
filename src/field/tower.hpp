@@ -60,7 +60,7 @@ namespace cufe::detail{
 
         [[nodiscard]] CUFE_HD static Fp6 one(){ return {Fp2::one(), Fp2::zero(), Fp2::zero()}; }
 
-        [[nodiscard]] CUFE_HD Fp6 square() const{
+        [[nodiscard]] CUFE_HD_CALL Fp6 square() const{
             const auto s0 = c0.square();
             const auto p01 = c0 * c1;
             const auto p12 = c1 * c2;
@@ -88,7 +88,7 @@ namespace cufe::detail{
 
         friend CUFE_HD Fp6 operator-(const Fp6& x){ return {-x.c0, -x.c1, -x.c2}; }
 
-        friend CUFE_HD Fp6 operator*(const Fp6& x, const Fp6& y){
+        friend CUFE_HD_CALL Fp6 operator*(const Fp6& x, const Fp6& y){
             const auto t0 = x.c0 * y.c0;
             const auto t1 = x.c1 * y.c1;
             const auto t2 = x.c2 * y.c2;
@@ -111,7 +111,7 @@ namespace cufe::detail{
 
         [[nodiscard]] CUFE_HD static Fp12 one(){ return {Fp6::one(), Fp6::zero()}; }
 
-        [[nodiscard]] CUFE_HD Fp12 square() const{
+        [[nodiscard]] CUFE_HD_CALL Fp12 square() const{
             const auto t0 = (c0 + c1) * (c0 + mul_by_v(c1));
             const auto t1 = c0 * c1;
             return {t0 - t1 - mul_by_v(t1), t1 + t1};
@@ -122,7 +122,7 @@ namespace cufe::detail{
             return {c0 * t, -(c1 * t)};
         }
 
-        friend CUFE_HD Fp12 operator*(const Fp12& x, const Fp12& y){
+        friend CUFE_HD_CALL Fp12 operator*(const Fp12& x, const Fp12& y){
             const auto t0 = x.c0 * y.c0;
             const auto t1 = x.c1 * y.c1;
             return {t0 + mul_by_v(t1), (x.c0 + x.c1) * (y.c0 + y.c1) - t0 - t1};
@@ -149,7 +149,7 @@ namespace cufe::detail{
         return {mul_by_nonresidue(x.c2 * y), x.c0 * y, x.c1 * y};
     }
 
-    [[nodiscard]] CUFE_HD Fp12 mul_by_line(const Fp12& x, const Fp6& xy00z0){
+    [[nodiscard]] CUFE_HD_CALL Fp12 mul_by_line(const Fp12& x, const Fp6& xy00z0){
         const auto t0 = mul_by_xy0(x.c0, xy00z0.c0, xy00z0.c1);
         const auto t1 = mul_by_0y0(x.c1, xy00z0.c2);
         return {t0 + mul_by_v(t1), mul_by_xy0(x.c0 + x.c1, xy00z0.c0, xy00z0.c1 + xy00z0.c2) - t0 - t1};
@@ -171,7 +171,7 @@ namespace cufe::detail{
         return t + t + square;
     }
 
-    [[nodiscard]] CUFE_HD Fp12 cyclotomic_square(const Fp12& x){
+    [[nodiscard]] CUFE_HD_CALL Fp12 cyclotomic_square(const Fp12& x){
         const auto t0 = square_fp4(x.c0.c0, x.c1.c1);
         const auto t1 = square_fp4(x.c1.c0, x.c0.c2);
         const auto t2 = square_fp4(x.c0.c1, x.c1.c2);

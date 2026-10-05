@@ -19,6 +19,9 @@ namespace cufe::detail{
     inline constexpr Words<6> kFpHalfExponent = shift_right(sub_word(kP, 1), 1);
     inline constexpr Words<4> kFrInverseExponent = sub_word(kR, 2);
 
+    inline constexpr Word kZ = 0xd201000000010000;
+    inline constexpr bool kZIsNegative = true;
+
     inline constexpr Words<6> kFpMontgomeryOne{
         0x760900000002fffd, 0xebf4000bc40c0002, 0x5f48985753c758ba,
         0x77ce585370525745, 0x5c071a97a256ec6d, 0x15f65ec3fa80e493
