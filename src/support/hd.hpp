@@ -6,10 +6,8 @@
 
 #ifdef __CUDACC__
 #define CUFE_HD __host__ __device__ __forceinline__
-#define CUFE_HD_CALL __host__ __device__ __noinline__ inline
 #else
 #define CUFE_HD inline
-#define CUFE_HD_CALL inline
 #endif
 
 namespace cufe::detail{

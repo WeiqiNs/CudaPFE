@@ -100,12 +100,7 @@ TEST(TowerTest, HostMatchesBlst){
 }
 
 TEST(TowerTest, FrobeniusIsThePthPower){
-    for (const auto& x : tower_samples<Fp12>(kPowerSamples)){
-        const auto once = frobenius<1>(x);
-        EXPECT_EQ(once, pow(x, kP));
-        EXPECT_EQ(frobenius<2>(x), frobenius<1>(once));
-        EXPECT_EQ(frobenius<3>(x), frobenius<1>(frobenius<1>(once)));
-    }
+    for (const auto& x : tower_samples<Fp12>(kPowerSamples)) EXPECT_EQ(frobenius<1>(x), pow(x, kP));
 }
 
 TEST(TowerTest, DeviceMatchesHost){

@@ -13,9 +13,6 @@ namespace cufe{
         GpuRuntime::GpuRuntime(){
             int devices = 0;
             check(cudaGetDeviceCount(&devices), "cudaGetDeviceCount");
-            int device = 0;
-            check(cudaGetDevice(&device), "cudaGetDevice");
-            check(cudaDeviceGetAttribute(&sm_count_, cudaDevAttrMultiProcessorCount, device), "cudaDeviceGetAttribute");
             check(cudaStreamCreateWithFlags(&stream_, cudaStreamNonBlocking), "cudaStreamCreateWithFlags");
         }
 
@@ -25,8 +22,6 @@ namespace cufe{
             static const GpuRuntime runtime;
             return runtime;
         }
-
-        void GpuRuntime::synchronize() const{ check(cudaStreamSynchronize(stream_), "cudaStreamSynchronize"); }
     }
 
     bool gpu_available(){

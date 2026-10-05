@@ -34,7 +34,6 @@ namespace cufe::detail{
         }
 
         [[nodiscard]] T* data(){ return data_; }
-        [[nodiscard]] std::size_t size() const{ return size_; }
 
         void copy_from(const std::span<const T> source){
             if (source.size() != size_){

@@ -8,7 +8,6 @@
 #include <random>
 #include <vector>
 #include "field/field.hpp"
-#include "field/tower.hpp"
 
 namespace cufe::test{
     template <class Params>

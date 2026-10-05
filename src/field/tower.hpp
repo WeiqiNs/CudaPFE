@@ -7,14 +7,6 @@
 #include "support/hd.hpp"
 
 namespace cufe::detail{
-    struct Fp2;
-    struct Fp4;
-    struct Fp6;
-    struct Fp12;
-
-    [[nodiscard]] CUFE_HD Fp2 mul_by_nonresidue(const Fp2& x);
-    [[nodiscard]] CUFE_HD Fp6 mul_by_v(const Fp6& x);
-
     struct Fp2{
         Fp c0, c1;
 
@@ -52,6 +44,8 @@ namespace cufe::detail{
 
         friend CUFE_HD bool operator==(const Fp2& x, const Fp2& y){ return x.c0 == y.c0 && x.c1 == y.c1; }
     };
+
+    [[nodiscard]] CUFE_HD Fp2 mul_by_nonresidue(const Fp2& x){ return {x.c0 - x.c1, x.c0 + x.c1}; }
 
     struct Fp4{
         Fp2 c0, c1;
@@ -108,6 +102,8 @@ namespace cufe::detail{
         }
     };
 
+    [[nodiscard]] CUFE_HD Fp6 mul_by_v(const Fp6& x){ return {mul_by_nonresidue(x.c2), x.c0, x.c1}; }
+
     struct Fp12{
         Fp6 c0, c1;
 
@@ -137,11 +133,7 @@ namespace cufe::detail{
     static_assert(sizeof(Fp6) == 288 && std::is_trivially_copyable_v<Fp6>);
     static_assert(sizeof(Fp12) == 576 && std::is_trivially_copyable_v<Fp12>);
 
-    CUFE_HD Fp2 mul_by_nonresidue(const Fp2& x){ return {x.c0 - x.c1, x.c0 + x.c1}; }
-
     [[nodiscard]] CUFE_HD Fp2 conjugate(const Fp2& x){ return {x.c0, -x.c1}; }
-
-    CUFE_HD Fp6 mul_by_v(const Fp6& x){ return {mul_by_nonresidue(x.c2), x.c0, x.c1}; }
 
     [[nodiscard]] CUFE_HD Fp12 conjugate(const Fp12& x){ return {x.c0, -x.c1}; }
 
