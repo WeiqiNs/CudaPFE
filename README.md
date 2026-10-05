@@ -26,4 +26,4 @@ A GPU is not required to build or test: without a CUDA device the GPU test cases
 
 ## License
 
-LibCuFE is licensed under the Apache License 2.0. See `NOTICE` for the sppark and blst attributions.
+LibCuFE is licensed under the Apache License 2.0.
