@@ -2,6 +2,7 @@
 #define CUFE_CUFE_HPP
 
 #include <cufe/core.hpp>
+#include <cufe/dlog.hpp>
 #include <cufe/engine.hpp>
 #include <cufe/errors.hpp>
 #include <cufe/io.hpp>

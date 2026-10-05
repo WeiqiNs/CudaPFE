@@ -37,6 +37,7 @@ include(cmake/CuFEDependencies.cmake)
 
 add_library(cufe_core STATIC
         src/curve/point.cu
+        src/dlog/dlog.cu
         src/field/random.cpp
         src/field/zp.cu
         src/linalg/matrix.cu
