@@ -2,6 +2,8 @@
 #define CUFE_SUPPORT_WORDS_HPP
 
 #include <cstddef>
+#include <cstdint>
+#include <cufe/core.hpp>
 #include "support/hd.hpp"
 
 namespace cufe::detail{
@@ -58,6 +60,23 @@ namespace cufe::detail{
     template <std::size_t N>
     constexpr CUFE_HD bool bit(const Words<N>& words, const std::size_t index){
         return (words[index / 64] >> (index % 64)) & 1;
+    }
+
+    template <std::size_t N>
+    void append_big_endian(Bytes& out, const Words<N>& words){
+        for (auto word = words.rbegin(); word != words.rend(); ++word){
+            for (int shift = 56; shift >= 0; shift -= 8) out.push_back(static_cast<std::uint8_t>(*word >> shift));
+        }
+    }
+
+    template <std::size_t N>
+    [[nodiscard]] Words<N> read_big_endian(const ByteView bytes){
+        Words<N> words{};
+        for (std::size_t i = 0; i < 8 * N; ++i){
+            auto& word = words[N - 1 - i / 8];
+            word = word << 8 | bytes[i];
+        }
+        return words;
     }
 }
 

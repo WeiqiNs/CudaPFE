@@ -33,7 +33,14 @@ endif ()
 
 include(cmake/CuFEDependencies.cmake)
 
-add_library(cufe_core STATIC src/support/runtime.cu)
+add_library(cufe_core STATIC
+        src/curve/point.cu
+        src/field/random.cpp
+        src/field/zp.cu
+        src/pairing/gt.cu
+        src/pairing/pair.cu
+        src/support/runtime.cu
+)
 add_library(CuFE::core ALIAS cufe_core)
 target_compile_features(cufe_core PUBLIC cxx_std_20)
 target_include_directories(cufe_core

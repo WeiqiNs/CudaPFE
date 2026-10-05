@@ -37,3 +37,32 @@ jobs:
 
       - name: Run tests, with GPU cases reported as skipped
         run: ctest --test-dir build --output-on-failure
+
+  package:
+    name: Optimized build, install and demo
+    runs-on: ubuntu-latest
+    container: nvidia/cuda:13.4.2-devel-ubuntu24.04
+
+    steps:
+      - name: Install dependencies
+        run: |
+          apt-get update
+          apt-get install -y build-essential cmake git ninja-build
+
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Configure an optimized build without the tests
+        run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCUFE_BUILD_TESTS=OFF
+
+      - name: Build
+        run: cmake --build build --parallel
+
+      - name: Install the package
+        run: cmake --install build --prefix /opt/cufe
+
+      - name: Build and run the demo against the installed package
+        run: |
+          cmake -S demo -B demo/build -G Ninja -DCMAKE_PREFIX_PATH=/opt/cufe
+          cmake --build demo/build --parallel
+          ./demo/build/demo

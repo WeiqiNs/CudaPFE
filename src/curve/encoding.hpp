@@ -61,10 +61,7 @@ namespace cufe::detail{
     }
 
     inline void append(Bytes& out, const Fp& x){
-        const auto words = x.canonical();
-        for (std::size_t i = words.size(); i-- > 0;){
-            for (int shift = 56; shift >= 0; shift -= 8) out.push_back(static_cast<std::uint8_t>(words[i] >> shift));
-        }
+        append_big_endian(out, x.canonical());
     }
 
     inline void append(Bytes& out, const Fp2& x){
@@ -73,13 +70,9 @@ namespace cufe::detail{
     }
 
     [[nodiscard]] inline Fp read_fp(const ByteView bytes){
-        Words<6> words{};
-        for (std::size_t i = 0; i < kFpBytes; ++i){
-            auto& word = words[words.size() - 1 - i / 8];
-            word = word << 8 | bytes[i];
-        }
+        const auto words = read_big_endian<6>(bytes);
         constexpr auto modulus = kP;
-        if (!less(words, modulus)) throw DecodeError("a point coordinate is not below the field modulus");
+        if (!less(words, modulus)) throw DecodeError("an Fp encoding is not below the field modulus");
         return Fp::from_canonical(words);
     }
 
