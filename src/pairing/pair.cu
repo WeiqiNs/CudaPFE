@@ -6,22 +6,13 @@
 #include "field/tower.hpp"
 #include "pairing/miller.hpp"
 #include "support/access.hpp"
+#include "vec/storage.hpp"
 
 namespace cufe{
     using detail::Access;
 
     namespace{
         constexpr std::size_t kPairsPerMillerLoop = 256;
-
-        template <class F, class T>
-        std::vector<detail::Affine<F>> affine(const std::vector<T>& points){
-            std::vector<detail::Jacobian<F>> jacobians;
-            jacobians.reserve(points.size());
-            for (const auto& p : points) jacobians.push_back(Access::element<detail::Jacobian<F>>(p));
-            std::vector<detail::Affine<F>> out(points.size());
-            detail::to_affine<F>(jacobians, out);
-            return out;
-        }
     }
 
     Gt pair(const G1& p, const G2& q){
@@ -30,8 +21,8 @@ namespace cufe{
 
     Gt pair(const std::vector<G1>& ps, const std::vector<G2>& qs){
         if (ps.size() != qs.size()) throw ShapeError("multi-pairing needs one G2 point per G1 point");
-        const auto p_affine = affine<detail::Fp>(ps);
-        const auto q_affine = affine<detail::Fp2>(qs);
+        const auto p_affine = detail::to_elements<G1>(ps);
+        const auto q_affine = detail::to_elements<G2>(qs);
 
         auto product = detail::Fp12::one();
         std::vector<detail::Line> lines(kPairsPerMillerLoop * detail::kLineCount);

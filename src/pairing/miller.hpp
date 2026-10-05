@@ -30,7 +30,6 @@ namespace cufe::detail{
 
     inline constexpr std::array<Step, kLineCount> kMillerSchedule = make_schedule(kZ);
 
-
     [[nodiscard]] CUFE_HD Line line_dbl(G2Jacobian& t){
         const auto a = t.x.square();
         const auto b = t.y.square();
@@ -69,7 +68,10 @@ namespace cufe::detail{
     }
 
     CUFE_HD void prepare_lines(const G2Affine& q, Line* out){
-        if (q.is_identity()) return;
+        if (q.is_identity()){
+            for (std::size_t step = 0; step < kLineCount; ++step) out[step] = Line::zero();
+            return;
+        }
         constexpr auto schedule = kMillerSchedule;
         G2Jacobian t{q.x, q.y, Fp2::one()};
 #pragma unroll 1
