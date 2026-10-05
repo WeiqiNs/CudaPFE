@@ -1,6 +1,6 @@
 include(CMakePackageConfigHelpers)
 
-install(TARGETS cufe_core cufe_blst EXPORT CuFETargets)
+install(TARGETS cufe_core cufe_fe cufe_blst EXPORT CuFETargets)
 install(DIRECTORY include/cufe DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 set(CUFE_CMAKE_INSTALL_DIR ${CMAKE_INSTALL_LIBDIR}/cmake/CuFE)
 install(EXPORT CuFETargets NAMESPACE CuFE:: DESTINATION ${CUFE_CMAKE_INSTALL_DIR})

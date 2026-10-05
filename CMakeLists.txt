@@ -58,6 +58,11 @@ target_include_directories(cufe_core
 target_link_libraries(cufe_core PRIVATE $<BUILD_INTERFACE:cufe_internal> PUBLIC cufe_blst CUDA::cudart)
 set_target_properties(cufe_core PROPERTIES EXPORT_NAME core POSITION_INDEPENDENT_CODE ON)
 
+add_library(cufe_fe INTERFACE)
+add_library(CuFE::fe ALIAS cufe_fe)
+target_link_libraries(cufe_fe INTERFACE cufe_core)
+set_target_properties(cufe_fe PROPERTIES EXPORT_NAME fe)
+
 include(cmake/CuFEInstall.cmake)
 
 if (CUFE_BUILD_BENCH)
