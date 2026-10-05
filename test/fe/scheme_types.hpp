@@ -28,5 +28,6 @@ template <class Scheme>
 class SchemeTest : public EngineTest<typename Scheme::Engine>{};
 
 using InnerProductSchemes = OnEveryEngine<Bjk, Tao, Kim, Lin, Kks, Opt>::type;
+using QuadraticSchemes = OnEveryEngine<Bcfg, Sgp>::type;
 
 #endif

@@ -85,7 +85,9 @@ namespace cufe{
             }
         };
 
-        CUFE_HD constexpr std::size_t segment_start(const Spread spread, const std::size_t segment, const std::size_t length){
+        CUFE_HD constexpr std::size_t segment_start(
+            const Spread spread, const std::size_t segment, const std::size_t length
+        ){
             return spread == Spread::shared ? 0 : segment * length;
         }
 
@@ -99,10 +101,11 @@ namespace cufe{
             CUFE_HD void operator()(const std::size_t t) const{
                 const auto rows = shape.shape.rows;
                 const auto cols = shape.shape.cols;
+                const auto row = t % rows;
                 const auto output = t / rows;
                 const auto segment = output / cols;
-                const auto base = segment_start(shape.bases, segment, rows) + t % rows;
-                const auto scalar = segment_start(shape.scalars, segment, rows * cols) + t % rows * cols + output % cols;
+                const auto base = segment_start(shape.bases, segment, rows) + row;
+                const auto scalar = segment_start(shape.scalars, segment, rows * cols) + row * cols + output % cols;
                 out[t] = detail::mul(detail::from_affine(bases[base]), scalars[scalar]);
             }
         };

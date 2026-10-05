@@ -25,7 +25,8 @@ namespace{
 
     std::vector<Zp> slice(const std::vector<Zp>& values, const Spread spread, const std::size_t segment,
         const std::size_t length){
-        const auto first = values.begin() + static_cast<std::ptrdiff_t>(spread == Spread::shared ? 0 : segment * length);
+        const auto offset = spread == Spread::shared ? 0 : segment * length;
+        const auto first = values.begin() + static_cast<std::ptrdiff_t>(offset);
         return {first, first + static_cast<std::ptrdiff_t>(length)};
     }
 

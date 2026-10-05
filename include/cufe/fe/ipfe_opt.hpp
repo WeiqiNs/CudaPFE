@@ -52,9 +52,13 @@ namespace cufe::IPFE::OPT{
             return product;
         }
 
+        [[nodiscard]] inline std::size_t entry_length(const std::size_t points, const std::size_t count){
+            return count == 0 ? 0 : points / count;
+        }
+
         template <Engine E>
         [[nodiscard]] Vec<G2, E> key_points(const Sk<E>& sk){
-            const auto length = IPFE::detail::entry_length(sk.vec.size(), sk.count);
+            const auto length = entry_length(sk.vec.size(), sk.count);
             return concat<G2, E>(sk.count, {{sk.vec, length}, {sk.r, b_size}});
         }
 
@@ -65,7 +69,7 @@ namespace cufe::IPFE::OPT{
 
         template <Engine E>
         [[nodiscard]] Vec<G1, E> ciphertext_points(const Ct<E>& ct){
-            const auto length = IPFE::detail::entry_length(ct.vec.size(), ct.count);
+            const auto length = entry_length(ct.vec.size(), ct.count);
             return concat<G1, E>(ct.count, {{ct.vec, length}, {-ct.r, b_size}});
         }
     }
@@ -87,9 +91,8 @@ namespace cufe::IPFE::OPT{
         for (const auto& function : functions){
             const auto s = random_vector(2);
             const auto masked = detail::times(s, msk.a) + to_vector(function);
-            const auto key = detail::times(msk.b, concat({s, detail::times(msk.a, masked)}));
-            r.insert(r.end(), key.begin(), key.end());
-            vec.insert(vec.end(), masked.begin(), masked.end());
+            IPFE::detail::append(r, detail::times(msk.b, concat({s, detail::times(msk.a, masked)})));
+            IPFE::detail::append(vec, masked);
         }
         return {functions.size(), IPFE::detail::lift<G2, E>(r), IPFE::detail::lift<G2, E>(vec)};
     }
@@ -107,9 +110,8 @@ namespace cufe::IPFE::OPT{
             const auto m = to_vector(message);
             const auto s = random_vector(2);
             const auto masked = detail::times(s, msk.a) + m;
-            const auto ct = detail::times(msk.bi, concat({detail::times(msk.a, m), s}));
-            r.insert(r.end(), ct.begin(), ct.end());
-            vec.insert(vec.end(), masked.begin(), masked.end());
+            IPFE::detail::append(r, detail::times(msk.bi, concat({detail::times(msk.a, m), s})));
+            IPFE::detail::append(vec, masked);
         }
         return {messages.size(), IPFE::detail::lift<G1, E>(r), IPFE::detail::lift<G1, E>(vec)};
     }

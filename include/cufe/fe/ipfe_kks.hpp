@@ -83,8 +83,9 @@ namespace cufe::IPFE::KKS{
         for (const auto& function : functions){
             const auto f = to_vector(function);
             const auto key = concat({Vector{-inner(msk.s, f), -inner(msk.t, f)}, f});
-            const auto row = concat({detail::key_half(msk, key), detail::key_half(msk, Vector(key.size()))});
-            exponents.insert(exponents.end(), row.begin(), row.end());
+            IPFE::detail::append(
+                exponents, concat({detail::key_half(msk, key), detail::key_half(msk, Vector(key.size()))})
+            );
         }
         return {functions.size(), IPFE::detail::lift<G2, E>(exponents)};
     }
@@ -99,8 +100,9 @@ namespace cufe::IPFE::KKS{
         Vector exponents;
         for (const auto& message : messages){
             const auto m = to_vector(message);
-            const auto row = concat({detail::ciphertext_half(msk, msk.h, m), detail::ciphertext_half(msk, msk.h_hat, m)});
-            exponents.insert(exponents.end(), row.begin(), row.end());
+            IPFE::detail::append(
+                exponents, concat({detail::ciphertext_half(msk, msk.h, m), detail::ciphertext_half(msk, msk.h_hat, m)})
+            );
         }
         return {messages.size(), IPFE::detail::lift<G1, E>(exponents)};
     }

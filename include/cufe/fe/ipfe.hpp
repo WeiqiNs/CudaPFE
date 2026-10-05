@@ -39,8 +39,8 @@ namespace cufe::IPFE{
             ));
         }
 
-        [[nodiscard]] inline std::size_t entry_length(const std::size_t points, const std::size_t count){
-            return count == 0 ? 0 : points / count;
+        inline void append(Vector& out, const Vector& values){
+            out.insert(out.end(), values.begin(), values.end());
         }
 
         template <Engine E, class Keys>
@@ -70,8 +70,8 @@ namespace cufe::IPFE{
                 const auto free = static_cast<double>(gpu_free_memory());
                 if (needed > free){
                     throw DeviceError(std::format(
-                        "{} setup inverts a {} x {} matrix, which needs about {:.1f} GB of device memory, but {:.1f} GB "
-                        "is free", scheme, size, size, needed / 1e9, free / 1e9
+                        "{} setup inverts a {} x {} matrix, which needs about {:.1f} GB of device memory, but "
+                        "{:.1f} GB is free", scheme, size, size, needed / 1e9, free / 1e9
                     ));
                 }
             }

@@ -49,8 +49,7 @@ namespace cufe::IPFE::LIN{
             const auto f = concat({to_vector(function), Vector(function.size())});
             const auto key = concat({Vector{inner(f, msk.s1)}, f});
             const auto r = Zp::random();
-            const auto row = concat({Vector{-r}, msk.s2 * r + key});
-            exponents.insert(exponents.end(), row.begin(), row.end());
+            detail::append(exponents, concat({Vector{-r}, msk.s2 * r + key}));
         }
         return {functions.size(), detail::lift<G2, E>(exponents)};
     }
@@ -67,8 +66,7 @@ namespace cufe::IPFE::LIN{
             const auto m = concat({to_vector(message), Vector(message.size())});
             const auto r = Zp::random();
             const auto ct = concat({Vector{-r}, msk.s1 * r + m});
-            const auto row = concat({Vector{inner(msk.s2, ct)}, ct});
-            exponents.insert(exponents.end(), row.begin(), row.end());
+            detail::append(exponents, concat({Vector{inner(msk.s2, ct)}, ct}));
         }
         return {messages.size(), detail::lift<G1, E>(exponents)};
     }

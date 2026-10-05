@@ -9,6 +9,8 @@
 #include <cufe/fe/ipfe_lin.hpp>
 #include <cufe/fe/ipfe_opt.hpp>
 #include <cufe/fe/ipfe_tao.hpp>
+#include <cufe/fe/qfe_bcfg.hpp>
+#include <cufe/fe/qfe_sgp.hpp>
 
 template <cufe::Engine E>
 auto table_decryptor(const cufe::Gt& base, const cufe::Range& range){
@@ -72,6 +74,27 @@ struct Opt{
     static auto setup(const std::size_t n){ return cufe::IPFE::OPT::setup<E>(n); }
     static auto decryptor(const cufe::IPFE::OPT::Msk<E>&, const cufe::Range& range){
         return table_decryptor<E>(cufe::IPFE::OPT::base(), range);
+    }
+};
+
+template <cufe::Engine E>
+struct Bcfg{
+    using Engine = E;
+    static constexpr std::string_view name = "Baltico et al.";
+    static auto setup(const std::size_t n){ return cufe::QFE::BCFG::setup<E>(n); }
+    static auto decryptor(const cufe::QFE::BCFG::Keys<E>& keys, const cufe::Range& range){
+        const cufe::DlogTable<E> table(cufe::QFE::BCFG::base(), range);
+        return [pk = keys.pk, table](const auto& sk, const auto& ct){ return dec(table, pk, sk, ct); };
+    }
+};
+
+template <cufe::Engine E>
+struct Sgp{
+    using Engine = E;
+    static constexpr std::string_view name = "Dufour-Sans et al.";
+    static auto setup(const std::size_t n){ return cufe::QFE::SGP::setup<E>(n); }
+    static auto decryptor(const cufe::QFE::SGP::Keys<E>&, const cufe::Range& range){
+        return table_decryptor<E>(cufe::QFE::SGP::base(), range);
     }
 };
 

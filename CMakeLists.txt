@@ -5,7 +5,7 @@ set(CMAKE_CUDA_ARCHITECTURES 120 CACHE STRING "CUDA architectures to build devic
 project(
         LibCuFE
         VERSION 0.1
-        DESCRIPTION "BLS12-381 pairings and function-hiding inner-product encryption on CPU and CUDA engines."
+        DESCRIPTION "BLS12-381 pairings and pairing-based functional encryption on CPU and CUDA engines."
         LANGUAGES C CXX CUDA ASM
 )
 
