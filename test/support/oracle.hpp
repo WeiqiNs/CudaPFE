@@ -5,6 +5,7 @@
 #include <bit>
 #include <cstddef>
 #include <cstdint>
+#include "curve/curve.hpp"
 #include "field/field.hpp"
 #include "field/tower.hpp"
 
@@ -18,6 +19,9 @@ namespace cufe::test{
 
     template <class Params>
     struct Oracle;
+
+    template <class F>
+    struct CurveOracle;
 
     template <>
     struct BlstType<detail::Fp>{ using type = blst_fp; };
@@ -33,6 +37,18 @@ namespace cufe::test{
 
     template <>
     struct BlstType<detail::Fp12>{ using type = blst_fp12; };
+
+    template <>
+    struct BlstType<detail::G1Jacobian>{ using type = blst_p1; };
+
+    template <>
+    struct BlstType<detail::G1Affine>{ using type = blst_p1_affine; };
+
+    template <>
+    struct BlstType<detail::G2Jacobian>{ using type = blst_p2; };
+
+    template <>
+    struct BlstType<detail::G2Affine>{ using type = blst_p2_affine; };
 
     template <class T>
     using Blst = typename BlstType<T>::type;
@@ -59,6 +75,34 @@ namespace cufe::test{
         static constexpr auto from_uint64 = blst_fr_from_uint64;
 
         static void neg(blst_fr* result, const blst_fr* x){ blst_fr_cneg(result, x, true); }
+    };
+
+    template <>
+    struct CurveOracle<detail::Fp>{
+        static constexpr std::size_t compressed_size = 48;
+        static constexpr auto add = blst_p1_add_or_double;
+        static constexpr auto add_affine = blst_p1_add_or_double_affine;
+        static constexpr auto dbl = blst_p1_double;
+        static constexpr auto to_affine = blst_p1_to_affine;
+        static constexpr auto generator = blst_p1_generator;
+        static constexpr auto mult = blst_p1_mult;
+        static constexpr auto cneg = blst_p1_cneg;
+        static constexpr auto uncompress = blst_p1_uncompress;
+        static constexpr auto in_group = blst_p1_affine_in_g1;
+    };
+
+    template <>
+    struct CurveOracle<detail::Fp2>{
+        static constexpr std::size_t compressed_size = 96;
+        static constexpr auto add = blst_p2_add_or_double;
+        static constexpr auto add_affine = blst_p2_add_or_double_affine;
+        static constexpr auto dbl = blst_p2_double;
+        static constexpr auto to_affine = blst_p2_to_affine;
+        static constexpr auto generator = blst_p2_generator;
+        static constexpr auto mult = blst_p2_mult;
+        static constexpr auto cneg = blst_p2_cneg;
+        static constexpr auto uncompress = blst_p2_uncompress;
+        static constexpr auto in_group = blst_p2_affine_in_g2;
     };
 
     template <class Element, class... Operands>

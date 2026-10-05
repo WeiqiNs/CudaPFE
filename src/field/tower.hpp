@@ -18,6 +18,8 @@ namespace cufe::detail{
             return {Fp::from_montgomery(words[0]), Fp::from_montgomery(words[1])};
         }
 
+        [[nodiscard]] CUFE_HD bool is_zero() const{ return c0.is_zero() && c1.is_zero(); }
+
         [[nodiscard]] CUFE_HD Fp2 square() const{
             const auto t = c0 * c1;
             return {(c0 + c1) * (c0 - c1), t + t};
