@@ -91,10 +91,7 @@ namespace cufe{
 
         template <Engine E>
         Vec<Gt, E> final_exps(const Buffer<Fp12, E>& products){
-            Buffer<Fp12, E> out(products.size());
-            detail::for_each<E>(products.size(), FinalExpOp{products.data(), out.data()});
-            detail::finish<E>();
-            return detail::vec<Gt, E>(std::move(out));
+            return detail::generate<Gt, E>(products.size(), [&](auto* out){ return FinalExpOp{products.data(), out}; });
         }
 
         template <class T>

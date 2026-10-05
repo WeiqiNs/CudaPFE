@@ -25,6 +25,7 @@ namespace cufe{
         using detail::data;
         using detail::ElementOf;
         using detail::FieldOf;
+        using detail::generate;
 
         template <class P>
         struct AddOp{
@@ -137,14 +138,6 @@ namespace cufe{
         const detail::Affine<F>* engine_generator_table(){
             if constexpr (std::same_as<E, Cpu>) return detail::generator_table<F>().data();
             else return device_generator_table<F>().data();
-        }
-
-        template <class T, Engine E, class MakeOp>
-        Vec<T, E> generate(const std::size_t size, const MakeOp& make_op){
-            Buffer<ElementOf<T>, E> out(size);
-            detail::for_each<E>(size, make_op(out.data()));
-            detail::finish<E>();
-            return detail::vec<T, E>(std::move(out));
         }
     }
 

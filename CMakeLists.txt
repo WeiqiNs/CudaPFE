@@ -39,6 +39,7 @@ add_library(cufe_core STATIC
         src/curve/point.cu
         src/field/random.cpp
         src/field/zp.cu
+        src/linalg/matrix.cu
         src/pairing/gt.cu
         src/pairing/multi_pair.cu
         src/pairing/pair.cu

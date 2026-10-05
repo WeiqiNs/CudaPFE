@@ -17,6 +17,7 @@
 #include "field/tower.hpp"
 #include "support/access.hpp"
 #include "support/device_array.hpp"
+#include "support/for_each.cuh"
 #include "support/runtime.hpp"
 
 namespace cufe::detail{
@@ -85,6 +86,14 @@ namespace cufe::detail{
     template <class T, Engine E>
     [[nodiscard]] Vec<T, E> vec(Buffer<ElementOf<T>, E> buffer){
         return Access::wrap<Vec<T, E>>(std::make_shared<const Storage<T, E>>(Storage<T, E>{std::move(buffer)}));
+    }
+
+    template <class T, Engine E, class MakeOp>
+    [[nodiscard]] Vec<T, E> generate(const std::size_t size, const MakeOp& make_op){
+        Buffer<ElementOf<T>, E> out(size);
+        for_each<E>(size, make_op(out.data()));
+        finish<E>();
+        return vec<T, E>(std::move(out));
     }
 
     template <class T>

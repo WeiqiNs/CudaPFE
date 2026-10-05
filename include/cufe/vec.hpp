@@ -13,6 +13,8 @@ namespace cufe{
     struct Shape{
         std::size_t rows;
         std::size_t cols;
+
+        friend bool operator==(const Shape& x, const Shape& y) = default;
     };
 
     namespace detail{
