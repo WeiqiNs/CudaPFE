@@ -44,7 +44,8 @@ template <class C>
 class VecTest : public CaseTest<C>{};
 
 using VecCases = ::testing::Types<
-    Case<Zp, Cpu>, Case<Zp, Gpu>, Case<G1, Cpu>, Case<G1, Gpu>, Case<G2, Cpu>, Case<G2, Gpu>, Case<Gt, Cpu>, Case<Gt, Gpu>>;
+    Case<Zp, Cpu>, Case<Zp, Gpu>, Case<G1, Cpu>, Case<G1, Gpu>, Case<G2, Cpu>, Case<G2, Gpu>, Case<Gt, Cpu>,
+    Case<Gt, Gpu>>;
 TYPED_TEST_SUITE(VecTest, VecCases);
 
 TYPED_TEST(VecTest, UploadDownloadRoundTrips){

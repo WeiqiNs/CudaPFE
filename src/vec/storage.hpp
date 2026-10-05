@@ -77,6 +77,9 @@ namespace cufe::detail{
     }
 
     template <class T, Engine E>
+    [[nodiscard]] const ElementOf<T>* data(const Vec<T, E>& values){ return buffer(values).data(); }
+
+    template <class T, Engine E>
     [[nodiscard]] Vec<T, E> vec(Buffer<ElementOf<T>, E> buffer){
         return Access::wrap<Vec<T, E>>(std::make_shared<const Storage<T, E>>(Storage<T, E>{std::move(buffer)}));
     }

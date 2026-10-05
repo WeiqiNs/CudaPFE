@@ -50,13 +50,14 @@ namespace{
     };
 
     struct MillerOp{
-        const G1Affine* px2s;
+        const G1Affine* ps;
+        const G2Affine* qs;
         const Line* lines;
         Fp12* results;
 
         CUFE_HD void operator()(const std::size_t i) const{
             const auto first = i * kPairsPerItem;
-            results[i] = miller(PreparedPairs{px2s + first, lines + first * kLineCount, kPairsPerItem});
+            results[i] = miller(PreparedPairs{ps + first, qs + first, lines + first * kLineCount, kPairsPerItem});
         }
     };
 
@@ -82,16 +83,9 @@ namespace{
         return lines;
     }
 
-    std::vector<G1Affine> host_px2s(const std::span<const G1Affine> ps){
-        std::vector<G1Affine> px2s;
-        for (const auto& p : ps) px2s.push_back(px2(p));
-        return px2s;
-    }
-
     Fp12 host_miller(const std::span<const G1Affine> ps, const std::span<const G2Affine> qs){
-        const auto px2s = host_px2s(ps);
         const auto lines = host_lines(qs);
-        return miller(PreparedPairs{px2s.data(), lines.data(), ps.size()});
+        return miller(PreparedPairs{ps.data(), qs.data(), lines.data(), ps.size()});
     }
 
     Fp12 blst_miller(const std::span<const G1Affine> ps, const std::span<const G2Affine> qs){
@@ -166,18 +160,18 @@ TEST(MillerTest, DeviceMatchesHost){
     constexpr std::size_t pairs = kDeviceItems * kPairsPerItem;
     const auto ps = affine_points<Fp>(pairs);
     const auto qs = affine_points<Fp2>(pairs);
-    const auto px2s = host_px2s(std::span(ps).first(pairs));
     const auto lines = host_lines(std::span(qs).first(pairs));
 
     DeviceArray<G2Affine> device_qs(pairs);
-    DeviceArray<G1Affine> device_px2s(pairs);
+    DeviceArray<G1Affine> device_ps(pairs);
     DeviceArray<Line> device_lines(lines.size());
     DeviceArray<Fp12> device_millers(kDeviceItems);
     DeviceArray<Fp12> device_finals(kDeviceItems);
     device_qs.copy_from(std::span(qs).first(pairs));
-    device_px2s.copy_from(px2s);
+    device_ps.copy_from(std::span(ps).first(pairs));
     for_each<Gpu>(pairs, PrepareLinesOp{device_qs.data(), device_lines.data()});
-    for_each<Gpu>(kDeviceItems, MillerOp{device_px2s.data(), device_lines.data(), device_millers.data()});
+    const MillerOp miller_op{device_ps.data(), device_qs.data(), device_lines.data(), device_millers.data()};
+    for_each<Gpu>(kDeviceItems, miller_op);
     for_each<Gpu>(kDeviceItems, FinalExpOp{device_millers.data(), device_finals.data()});
 
     EXPECT_EQ(device_lines.copy_to_host(), lines);
@@ -185,8 +179,8 @@ TEST(MillerTest, DeviceMatchesHost){
     const auto finals = device_finals.copy_to_host();
     for (std::size_t item = 0; item < kDeviceItems; ++item){
         const auto first = item * kPairsPerItem;
-        const PreparedPairs item_pairs{px2s.data() + first, lines.data() + first * kLineCount, kPairsPerItem};
-        const auto expected = miller(item_pairs);
+        const auto expected = miller(
+            PreparedPairs{ps.data() + first, qs.data() + first, lines.data() + first * kLineCount, kPairsPerItem});
         EXPECT_EQ(millers[item], expected) << item;
         EXPECT_EQ(finals[item], final_exp(expected)) << item;
     }

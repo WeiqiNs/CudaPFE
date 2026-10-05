@@ -19,6 +19,7 @@
 namespace cufe{
     namespace{
         using detail::Buffer;
+        using detail::data;
         using detail::ElementOf;
 
         template <class P>
@@ -89,9 +90,6 @@ namespace cufe{
             if constexpr (std::same_as<E, Cpu>) return detail::generator_table<F>().data();
             else return device_generator_table<F>().data();
         }
-
-        template <class T, Engine E>
-        const ElementOf<T>* data(const Vec<T, E>& values){ return detail::buffer(values).data(); }
 
         template <class T, Engine E, class MakeOp>
         Vec<T, E> generate(const std::size_t size, const MakeOp& make_op){

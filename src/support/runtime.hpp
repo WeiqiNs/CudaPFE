@@ -18,12 +18,15 @@ namespace cufe::detail{
 
         [[nodiscard]] cudaStream_t stream() const{ return stream_; }
 
+        [[nodiscard]] int sm_count() const{ return sm_count_; }
+
         void synchronize() const;
 
     private:
         GpuRuntime();
 
         cudaStream_t stream_ = nullptr;
+        int sm_count_ = 0;
     };
 }
 

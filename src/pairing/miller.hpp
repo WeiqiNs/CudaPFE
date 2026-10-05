@@ -30,19 +30,6 @@ namespace cufe::detail{
 
     inline constexpr std::array<Step, kLineCount> kMillerSchedule = make_schedule(kZ);
 
-    struct PreparedPairs{
-        const G1Affine* px2s;
-        const Line* lines;
-        std::size_t size;
-
-        [[nodiscard]] CUFE_HD std::size_t count() const{ return size; }
-
-        [[nodiscard]] CUFE_HD const G1Affine& px2(const std::size_t i) const{ return px2s[i]; }
-
-        [[nodiscard]] CUFE_HD const Line& line(const std::size_t i, const std::size_t step) const{
-            return lines[i * kLineCount + step];
-        }
-    };
 
     [[nodiscard]] CUFE_HD Line line_dbl(G2Jacobian& t){
         const auto a = t.x.square();
@@ -82,6 +69,7 @@ namespace cufe::detail{
     }
 
     CUFE_HD void prepare_lines(const G2Affine& q, Line* out){
+        if (q.is_identity()) return;
         constexpr auto schedule = kMillerSchedule;
         G2Jacobian t{q.x, q.y, Fp2::one()};
 #pragma unroll 1
@@ -91,6 +79,25 @@ namespace cufe::detail{
     }
 
     [[nodiscard]] CUFE_HD G1Affine px2(const G1Affine& p){ return {-(p.x + p.x), p.y + p.y}; }
+
+    struct PreparedPairs{
+        const G1Affine* ps;
+        const G2Affine* qs;
+        const Line* lines;
+        std::size_t size;
+
+        [[nodiscard]] CUFE_HD std::size_t count() const{ return size; }
+
+        [[nodiscard]] CUFE_HD bool live(const std::size_t i) const{
+            return !ps[i].is_identity() && !qs[i].is_identity();
+        }
+
+        [[nodiscard]] CUFE_HD G1Affine px2(const std::size_t i) const{ return detail::px2(ps[i]); }
+
+        [[nodiscard]] CUFE_HD const Line& line(const std::size_t i, const std::size_t step) const{
+            return lines[i * kLineCount + step];
+        }
+    };
 
     [[nodiscard]] CUFE_HD Line evaluate(const Line& line, const G1Affine& px2){
         return {line.c0, line.c1 * px2.x, line.c2 * px2.y};
@@ -105,7 +112,7 @@ namespace cufe::detail{
             if (step != 0 && schedule[step] == Step::dbl) f = f.square();
 #pragma unroll 1
             for (std::size_t i = 0; i < pairs.count(); ++i){
-                f = mul_by_line(f, evaluate(pairs.line(i, step), pairs.px2(i)));
+                if (pairs.live(i)) f = mul_by_line(f, evaluate(pairs.line(i, step), pairs.px2(i)));
             }
         }
         if constexpr (kZIsNegative) return conjugate(f);

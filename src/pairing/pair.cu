@@ -32,22 +32,16 @@ namespace cufe{
         if (ps.size() != qs.size()) throw ShapeError("multi-pairing needs one G2 point per G1 point");
         const auto p_affine = affine<detail::Fp>(ps);
         const auto q_affine = affine<detail::Fp2>(qs);
-        std::vector<std::size_t> live;
-        for (std::size_t i = 0; i < ps.size(); ++i){
-            if (!p_affine[i].is_identity() && !q_affine[i].is_identity()) live.push_back(i);
-        }
 
         auto product = detail::Fp12::one();
-        for (std::size_t first = 0; first < live.size(); first += kPairsPerMillerLoop){
-            const auto count = std::min(kPairsPerMillerLoop, live.size() - first);
-            std::vector<detail::G1Affine> px2s;
-            std::vector<detail::Line> lines(count * detail::kLineCount);
+        std::vector<detail::Line> lines(kPairsPerMillerLoop * detail::kLineCount);
+        for (std::size_t first = 0; first < ps.size(); first += kPairsPerMillerLoop){
+            const auto count = std::min(kPairsPerMillerLoop, ps.size() - first);
             for (std::size_t k = 0; k < count; ++k){
-                const auto i = live[first + k];
-                px2s.push_back(detail::px2(p_affine[i]));
-                detail::prepare_lines(q_affine[i], lines.data() + k * detail::kLineCount);
+                detail::prepare_lines(q_affine[first + k], lines.data() + k * detail::kLineCount);
             }
-            product = product * detail::miller(detail::PreparedPairs{px2s.data(), lines.data(), count});
+            const detail::PreparedPairs pairs{p_affine.data() + first, q_affine.data() + first, lines.data(), count};
+            product = product * detail::miller(pairs);
         }
         return Access::value<Gt>(detail::final_exp(product));
     }

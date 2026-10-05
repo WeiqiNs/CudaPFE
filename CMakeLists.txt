@@ -22,6 +22,8 @@ endif ()
 
 option(CUFE_BUILD_TESTS "Build the LibCuFE test suite" ${PROJECT_IS_TOP_LEVEL})
 option(CUFE_PTXAS_VERBOSE "Print ptxas register and spill reports for every kernel" OFF)
+set(CUFE_HOST_MILLER_BELOW 64 CACHE STRING "Gpu pair_segments runs everything on the host below this many pairs")
+set(CUFE_HOST_FINAL_EXP_BELOW 32 CACHE STRING "Gpu pair_segments runs final exponentiations on the host below this many segments")
 
 include(GNUInstallDirs)
 find_package(CUDAToolkit REQUIRED)
@@ -38,6 +40,7 @@ add_library(cufe_core STATIC
         src/field/random.cpp
         src/field/zp.cu
         src/pairing/gt.cu
+        src/pairing/multi_pair.cu
         src/pairing/pair.cu
         src/support/runtime.cu
         src/vec/vec.cu

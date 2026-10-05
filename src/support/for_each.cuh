@@ -22,6 +22,15 @@ namespace cufe::detail{
         if (index < count) op(index);
     }
 
+    template <class Op>
+    [[nodiscard]] std::size_t resident_threads(){
+        constexpr auto threads = threads_per_block<Op>();
+        int blocks = 0;
+        check(cudaOccupancyMaxActiveBlocksPerMultiprocessor(&blocks, run_each<threads, Op>, threads, 0),
+            "cudaOccupancyMaxActiveBlocksPerMultiprocessor");
+        return static_cast<std::size_t>(blocks) * threads * static_cast<std::size_t>(GpuRuntime::require().sm_count());
+    }
+
     template <Engine E, class Op>
     void for_each(const std::size_t count, const Op& op){
         if constexpr (std::same_as<E, Cpu>){

@@ -27,3 +27,7 @@ add_library(cufe_internal INTERFACE)
 target_include_directories(cufe_internal INTERFACE ${PROJECT_SOURCE_DIR}/src)
 target_include_directories(cufe_internal SYSTEM INTERFACE ${PROJECT_SOURCE_DIR}/third_party/sppark ${blst_SOURCE_DIR}/src)
 target_link_libraries(cufe_internal INTERFACE cufe_blst CUDA::cudart)
+target_compile_definitions(cufe_internal INTERFACE
+        CUFE_HOST_MILLER_BELOW=${CUFE_HOST_MILLER_BELOW}
+        CUFE_HOST_FINAL_EXP_BELOW=${CUFE_HOST_FINAL_EXP_BELOW}
+)
