@@ -1,5 +1,7 @@
 # Pairing-based Functional Encryption in CUDA (CudaPFE)
 
+[![CudaPFE CI](https://github.com/WeiqiNs/CudaPFE/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/WeiqiNs/CudaPFE/actions/workflows/ci.yml)
+
 CudaPFE is a C++20 and CUDA library for BLS12-381 pairings and pairing-based functional encryption. Batch operations
 run on a CPU engine or a CUDA engine; both execute the same `__host__ __device__` arithmetic, which is built on
 [sppark](https://github.com/supranational/sppark)'s Montgomery fields and checked bit for bit against
