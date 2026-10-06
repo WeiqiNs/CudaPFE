@@ -1,5 +1,5 @@
-#ifndef CUFE_CORE_HPP
-#define CUFE_CORE_HPP
+#ifndef CUDAPFE_CORE_HPP
+#define CUDAPFE_CORE_HPP
 
 #include <array>
 #include <concepts>
@@ -11,7 +11,7 @@
 #include <vector>
 #include "errors.hpp"
 
-namespace cufe{
+namespace cudapfe{
     using Bytes = std::vector<std::uint8_t>;
     using ByteView = std::span<const std::uint8_t>;
 

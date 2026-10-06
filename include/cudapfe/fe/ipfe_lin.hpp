@@ -1,20 +1,18 @@
-#ifndef CUFE_FE_IPFE_TAO_HPP
-#define CUFE_FE_IPFE_TAO_HPP
+#ifndef CUDAPFE_FE_IPFE_LIN_HPP
+#define CUDAPFE_FE_IPFE_LIN_HPP
 
 #include <concepts>
 #include <cstddef>
 #include <cstdint>
 #include <optional>
-#include <utility>
 #include <vector>
 #include "ipfe.hpp"
 
-namespace cufe::IPFE::TAO{
+namespace cudapfe::IPFE::LIN{
     template <Engine E>
     struct Msk{
-        Matrix<E> b;
-        Matrix<E> bi;
-        Gt base;
+        Vector s1;
+        Vector s2;
     };
 
     template <Engine E>
@@ -37,21 +35,23 @@ namespace cufe::IPFE::TAO{
 
     template <Engine E>
     [[nodiscard]] Msk<E> setup(const std::size_t size){
-        detail::require_setup_memory<E>(2 * size + 5, "IPFE::TAO");
-        const auto r = Zp::random();
-        auto b = Matrix<E>::random({2 * size + 5, 2 * size + 5});
-        auto bi = (b.inverse() * r).transpose();
-        return {std::move(b), std::move(bi), Gt::generator().pow(r)};
+        return {random_vector(2 * size), random_vector(2 * size + 1)};
+    }
+
+    [[nodiscard]] inline Gt base(){
+        return Gt::generator();
     }
 
     template <Engine E>
     [[nodiscard]] Sk<E> keygen(const Msk<E>& msk, const IntMatrix& functions){
-        std::vector<Vector> encoded;
+        Vector exponents;
         for (const auto& function : functions){
-            const auto f = to_vector(function);
-            encoded.push_back(concat({f, Vector(f.size() + 2), Vector{Zp::random(), Zp::random(), {}}}));
+            const auto f = concat({to_vector(function), Vector(function.size())});
+            const auto key = concat({Vector{inner(f, msk.s1)}, f});
+            const auto r = Zp::random();
+            detail::append(exponents, concat({Vector{-r}, msk.s2 * r + key}));
         }
-        return {functions.size(), detail::lift<G2>(encoded, msk.b)};
+        return {functions.size(), detail::lift<G2, E>(exponents)};
     }
 
     template <Engine E>
@@ -61,12 +61,14 @@ namespace cufe::IPFE::TAO{
 
     template <Engine E>
     [[nodiscard]] Ct<E> enc(const Msk<E>& msk, const IntMatrix& messages){
-        std::vector<Vector> encoded;
+        Vector exponents;
         for (const auto& message : messages){
-            const auto m = to_vector(message);
-            encoded.push_back(concat({m, Vector(m.size()), Vector{Zp::random(), Zp::random(), {}, {}, {}}}));
+            const auto m = concat({to_vector(message), Vector(message.size())});
+            const auto r = Zp::random();
+            const auto ct = concat({Vector{-r}, msk.s1 * r + m});
+            detail::append(exponents, concat({Vector{inner(msk.s2, ct)}, ct}));
         }
-        return {messages.size(), detail::lift<G1>(encoded, msk.bi)};
+        return {messages.size(), detail::lift<G1, E>(exponents)};
     }
 
     template <Engine E>
@@ -76,7 +78,7 @@ namespace cufe::IPFE::TAO{
 
     template <Engine E>
     [[nodiscard]] PreparedSk<E> prepare(const Sk<E>& sk){
-        return {sk.count, cufe::prepare(sk.vec)};
+        return {sk.count, cudapfe::prepare(sk.vec)};
     }
 
     template <Engine E, class Key> requires std::same_as<Key, Sk<E>> || std::same_as<Key, PreparedSk<E>>

@@ -6,8 +6,8 @@
 #include "support/for_each.cuh"
 #include "support/hd.hpp"
 
-using namespace cufe;
-using namespace cufe::detail;
+using namespace cudapfe;
+using namespace cudapfe::detail;
 
 namespace{
     constexpr Word kGolden = 0x9e3779b97f4a7c15;
@@ -15,7 +15,7 @@ namespace{
     struct AddIndexHash{
         Word* slots;
 
-        CUFE_HD void operator()(const std::size_t index) const{ slots[index] += index * kGolden + 1; }
+        CUDAPFE_HD void operator()(const std::size_t index) const{ slots[index] += index * kGolden + 1; }
     };
 
     struct AddIndexHashInWarps : AddIndexHash{
@@ -54,7 +54,7 @@ TYPED_TEST(ForEachTest, VisitsEveryIndexExactlyOnce){
 }
 
 TEST(DeviceArrayTest, AllocationFailureIsADeviceError){
-    CUFE_REQUIRE_GPU();
+    CUDAPFE_REQUIRE_GPU();
     EXPECT_THROW(DeviceArray<std::byte>(std::size_t{1} << 50), DeviceError);
     EXPECT_EQ((visit<Gpu, AddIndexHash>(1)), (std::vector<Word>{1, 0}));
 }

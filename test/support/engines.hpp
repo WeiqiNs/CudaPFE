@@ -1,26 +1,26 @@
-#ifndef CUFE_TEST_ENGINES_HPP
-#define CUFE_TEST_ENGINES_HPP
+#ifndef CUDAPFE_TEST_ENGINES_HPP
+#define CUDAPFE_TEST_ENGINES_HPP
 
 #include <concepts>
 #include <gtest/gtest.h>
-#include <cufe/engine.hpp>
+#include <cudapfe/engine.hpp>
 
-#define CUFE_REQUIRE_GPU() \
+#define CUDAPFE_REQUIRE_GPU() \
     do{ \
-        if (!::cufe::gpu_available()) GTEST_SKIP() << "no CUDA device"; \
+        if (!::cudapfe::gpu_available()) GTEST_SKIP() << "no CUDA device"; \
     } while (false)
 
-using Engines = ::testing::Types<cufe::Cpu, cufe::Gpu>;
+using Engines = ::testing::Types<cudapfe::Cpu, cudapfe::Gpu>;
 
-template <cufe::Engine E>
+template <cudapfe::Engine E>
 class EngineTest : public ::testing::Test{
 protected:
     void SetUp() override{
-        if constexpr (std::same_as<E, cufe::Gpu>) CUFE_REQUIRE_GPU();
+        if constexpr (std::same_as<E, cudapfe::Gpu>) CUDAPFE_REQUIRE_GPU();
     }
 };
 
-template <class T, cufe::Engine E>
+template <class T, cudapfe::Engine E>
 struct Case{
     using Value = T;
     using Engine = E;

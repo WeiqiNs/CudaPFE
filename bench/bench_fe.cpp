@@ -11,12 +11,12 @@
 #include <string_view>
 #include <utility>
 #include <vector>
-#include <cufe/cufe.hpp>
+#include <cudapfe/cudapfe.hpp>
 #include "schemes.hpp"
 #include "timing.hpp"
 
-using namespace cufe;
-using namespace cufe::bench;
+using namespace cudapfe;
+using namespace cudapfe::bench;
 
 namespace{
     constexpr std::int64_t kBound = 10000;
@@ -231,7 +231,7 @@ namespace{
     }
 
     void print_header(const std::string_view mode){
-        std::cout << std::format("# LibCuFE FE benchmark ({})\n\n", mode) << machine_summary() << timing_summary()
+        std::cout << std::format("# CudaPFE FE benchmark ({})\n\n", mode) << machine_summary() << timing_summary()
             << std::format(
                 "- Each call handles a batch of B keys or ciphertexts; Dec decrypts B pairs zipped. Inputs are random "
                 "vectors (and matrices) whose results lie in [0, {0}]. Fixed-base schemes reuse one discrete-log "
@@ -249,16 +249,16 @@ int main(const int argc, char** argv){
     for (int i = 1; i < argc; ++i){
         if (std::string_view(argv[i]) == "--quick") quick = true;
         else {
-            std::cerr << "usage: cufe_bench_fe [--quick]\n";
+            std::cerr << "usage: cudapfe_bench_fe [--quick]\n";
             return 2;
         }
     }
     if (!gpu_available()){
-        std::cerr << "cufe_bench_fe needs a CUDA device\n";
+        std::cerr << "cudapfe_bench_fe needs a CUDA device\n";
         return 1;
     }
     std::cout << std::unitbuf;
-    seed(bytes_of("cufe_bench_fe"));
+    seed(bytes_of("cudapfe_bench_fe"));
     (void)Gt::generator();
 
     print_header(quick ? "quick" : "full");

@@ -10,9 +10,9 @@
 #include "support/for_each.cuh"
 #include "support/hd.hpp"
 
-using namespace cufe;
-using namespace cufe::detail;
-using namespace cufe::test;
+using namespace cudapfe;
+using namespace cudapfe::detail;
+using namespace cudapfe::test;
 
 namespace{
     constexpr std::size_t kSamples = 200;
@@ -29,7 +29,7 @@ namespace{
         Fp12 product, square, conjugate, inverse, frobenius1, frobenius2, frobenius3, line_product, cyclotomic_square;
     };
 
-    CUFE_HD TowerResults evaluate(const TowerInput& in){
+    CUDAPFE_HD TowerResults evaluate(const TowerInput& in){
         return {
             in.a * in.b, in.a.square(), in.a.inverse(),
             in.x * in.y, in.x.square(), conjugate(in.x), in.x.inverse(),
@@ -42,7 +42,7 @@ namespace{
         const TowerInput* inputs;
         TowerResults* results;
 
-        CUFE_HD void operator()(const std::size_t i) const{ results[i] = evaluate(inputs[i]); }
+        CUDAPFE_HD void operator()(const std::size_t i) const{ results[i] = evaluate(inputs[i]); }
     };
 
     TowerResults blst_evaluate(const TowerInput& in){
@@ -104,7 +104,7 @@ TEST(TowerTest, FrobeniusIsThePthPower){
 }
 
 TEST(TowerTest, DeviceMatchesHost){
-    CUFE_REQUIRE_GPU();
+    CUDAPFE_REQUIRE_GPU();
     const auto inputs = tower_inputs();
     DeviceArray<TowerInput> device_inputs(inputs.size());
     DeviceArray<TowerResults> results(inputs.size());

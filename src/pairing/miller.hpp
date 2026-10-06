@@ -1,5 +1,5 @@
-#ifndef CUFE_PAIRING_MILLER_HPP
-#define CUFE_PAIRING_MILLER_HPP
+#ifndef CUDAPFE_PAIRING_MILLER_HPP
+#define CUDAPFE_PAIRING_MILLER_HPP
 
 #include <array>
 #include <bit>
@@ -11,7 +11,7 @@
 #include "field/tower.hpp"
 #include "support/hd.hpp"
 
-namespace cufe::detail{
+namespace cudapfe::detail{
     enum class Step : std::uint8_t{ dbl, add };
 
     using Line = Fp6;
@@ -30,7 +30,7 @@ namespace cufe::detail{
 
     inline constexpr std::array<Step, kLineCount> kMillerSchedule = make_schedule(kZ);
 
-    [[nodiscard]] CUFE_HD Line line_dbl(G2Jacobian& t){
+    [[nodiscard]] CUDAPFE_HD Line line_dbl(G2Jacobian& t){
         const auto a = t.x.square();
         const auto b = t.y.square();
         const auto zz = t.z.square();
@@ -49,7 +49,7 @@ namespace cufe::detail{
         return {ex.square() - a - f - (b2 + b2), e * zz, z3 * zz};
     }
 
-    [[nodiscard]] CUFE_HD Line line_add(G2Jacobian& t, const G2Affine& q){
+    [[nodiscard]] CUDAPFE_HD Line line_add(G2Jacobian& t, const G2Affine& q){
         const auto z1z1 = t.z.square();
         const auto h = q.x * z1z1 - t.x;
         const auto s = q.y * t.z * z1z1 - t.y;
@@ -67,7 +67,7 @@ namespace cufe::detail{
         return {line + line, r, z3};
     }
 
-    CUFE_HD void prepare_lines(const G2Affine& q, Line* out){
+    CUDAPFE_HD void prepare_lines(const G2Affine& q, Line* out){
         if (q.is_identity()){
             for (std::size_t step = 0; step < kLineCount; ++step) out[step] = Line::zero();
             return;
@@ -80,7 +80,7 @@ namespace cufe::detail{
         }
     }
 
-    [[nodiscard]] CUFE_HD G1Affine px2(const G1Affine& p){ return {-(p.x + p.x), p.y + p.y}; }
+    [[nodiscard]] CUDAPFE_HD G1Affine px2(const G1Affine& p){ return {-(p.x + p.x), p.y + p.y}; }
 
     struct PreparedPairs{
         const G1Affine* ps;
@@ -88,15 +88,15 @@ namespace cufe::detail{
         const Line* lines;
         std::size_t size;
 
-        [[nodiscard]] CUFE_HD std::size_t count() const{ return size; }
+        [[nodiscard]] CUDAPFE_HD std::size_t count() const{ return size; }
 
-        [[nodiscard]] CUFE_HD bool live(const std::size_t i) const{
+        [[nodiscard]] CUDAPFE_HD bool live(const std::size_t i) const{
             return !ps[i].is_identity() && !qs[i].is_identity();
         }
 
-        [[nodiscard]] CUFE_HD G1Affine px2(const std::size_t i) const{ return detail::px2(ps[i]); }
+        [[nodiscard]] CUDAPFE_HD G1Affine px2(const std::size_t i) const{ return detail::px2(ps[i]); }
 
-        [[nodiscard]] CUFE_HD const Line& line(const std::size_t i, const std::size_t step) const{
+        [[nodiscard]] CUDAPFE_HD const Line& line(const std::size_t i, const std::size_t step) const{
             return lines[i * kLineCount + step];
         }
     };
@@ -106,7 +106,7 @@ namespace cufe::detail{
 
         std::uint32_t mask;
 
-        [[nodiscard]] CUFE_HD static MaskedPairs gather(const PreparedPairs& pairs){
+        [[nodiscard]] CUDAPFE_HD static MaskedPairs gather(const PreparedPairs& pairs){
             MaskedPairs masked{pairs, 0};
             for (std::size_t i = 0; i < pairs.size; ++i){
                 if (pairs.live(i)) masked.mask |= std::uint32_t{1} << i;
@@ -114,15 +114,15 @@ namespace cufe::detail{
             return masked;
         }
 
-        [[nodiscard]] CUFE_HD bool live(const std::size_t i) const{ return (mask >> i) & 1; }
+        [[nodiscard]] CUDAPFE_HD bool live(const std::size_t i) const{ return (mask >> i) & 1; }
     };
 
-    [[nodiscard]] CUFE_HD Line evaluate(const Line& line, const G1Affine& px2){
+    [[nodiscard]] CUDAPFE_HD Line evaluate(const Line& line, const G1Affine& px2){
         return {line.c0, line.c1 * px2.x, line.c2 * px2.y};
     }
 
     template <class Pairs>
-    [[nodiscard]] CUFE_HD Fp12 miller(const Pairs& pairs){
+    [[nodiscard]] CUDAPFE_HD Fp12 miller(const Pairs& pairs){
         constexpr auto schedule = kMillerSchedule;
         auto f = Fp12::one();
 #pragma unroll 1
@@ -137,7 +137,7 @@ namespace cufe::detail{
         else return f;
     }
 
-    [[nodiscard]] CUFE_HD Fp12 raise_to_z_div_by_2(const Fp12& a){
+    [[nodiscard]] CUDAPFE_HD Fp12 raise_to_z_div_by_2(const Fp12& a){
         constexpr Word exponent = kZ >> 1;
         constexpr int top = std::bit_width(exponent) - 1;
         auto result = a;
@@ -150,9 +150,9 @@ namespace cufe::detail{
         else return result;
     }
 
-    [[nodiscard]] CUFE_HD Fp12 raise_to_z(const Fp12& a){ return cyclotomic_square(raise_to_z_div_by_2(a)); }
+    [[nodiscard]] CUDAPFE_HD Fp12 raise_to_z(const Fp12& a){ return cyclotomic_square(raise_to_z_div_by_2(a)); }
 
-    [[nodiscard]] CUFE_HD Fp12 final_exp(const Fp12& f){
+    [[nodiscard]] CUDAPFE_HD Fp12 final_exp(const Fp12& f){
         auto ret = conjugate(f) * f.inverse();
         ret = ret * frobenius<2>(ret);
         const auto y0 = cyclotomic_square(ret);

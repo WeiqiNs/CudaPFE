@@ -1,5 +1,5 @@
-#ifndef CUFE_SUPPORT_DEVICE_ARRAY_HPP
-#define CUFE_SUPPORT_DEVICE_ARRAY_HPP
+#ifndef CUDAPFE_SUPPORT_DEVICE_ARRAY_HPP
+#define CUDAPFE_SUPPORT_DEVICE_ARRAY_HPP
 
 #include <cstddef>
 #include <span>
@@ -8,7 +8,7 @@
 #include <vector>
 #include "support/runtime.hpp"
 
-namespace cufe::detail{
+namespace cudapfe::detail{
     template <class T>
     class DeviceArray{
     public:

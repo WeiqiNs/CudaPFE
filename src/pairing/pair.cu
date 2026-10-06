@@ -1,14 +1,14 @@
 #include <algorithm>
 #include <cstddef>
 #include <vector>
-#include <cufe/core.hpp>
+#include <cudapfe/core.hpp>
 #include "curve/curve.hpp"
 #include "field/tower.hpp"
 #include "pairing/miller.hpp"
 #include "support/access.hpp"
 #include "vec/storage.hpp"
 
-namespace cufe{
+namespace cudapfe{
     using detail::Access;
 
     namespace{

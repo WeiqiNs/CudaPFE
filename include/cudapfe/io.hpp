@@ -1,5 +1,5 @@
-#ifndef CUFE_IO_HPP
-#define CUFE_IO_HPP
+#ifndef CUDAPFE_IO_HPP
+#define CUDAPFE_IO_HPP
 
 #include <format>
 #include <ostream>
@@ -7,7 +7,7 @@
 #include <string_view>
 #include "core.hpp"
 
-namespace cufe{
+namespace cudapfe{
     [[nodiscard]] inline std::string to_hex(const ByteView bytes){
         constexpr std::string_view digits = "0123456789abcdef";
         std::string out;
@@ -34,23 +34,23 @@ namespace cufe{
 }
 
 template <>
-struct std::formatter<cufe::Zp> : std::formatter<std::string>{
-    auto format(const cufe::Zp& x, std::format_context& context) const{
+struct std::formatter<cudapfe::Zp> : std::formatter<std::string>{
+    auto format(const cudapfe::Zp& x, std::format_context& context) const{
         return std::formatter<std::string>::format(x.to_string(), context);
     }
 };
 
-template <cufe::Side S>
-struct std::formatter<cufe::Point<S>> : std::formatter<std::string>{
-    auto format(const cufe::Point<S>& p, std::format_context& context) const{
-        return std::formatter<std::string>::format(cufe::to_hex(p.to_bytes()), context);
+template <cudapfe::Side S>
+struct std::formatter<cudapfe::Point<S>> : std::formatter<std::string>{
+    auto format(const cudapfe::Point<S>& p, std::format_context& context) const{
+        return std::formatter<std::string>::format(cudapfe::to_hex(p.to_bytes()), context);
     }
 };
 
 template <>
-struct std::formatter<cufe::Gt> : std::formatter<std::string>{
-    auto format(const cufe::Gt& x, std::format_context& context) const{
-        return std::formatter<std::string>::format(cufe::to_hex(x.to_bytes()), context);
+struct std::formatter<cudapfe::Gt> : std::formatter<std::string>{
+    auto format(const cudapfe::Gt& x, std::format_context& context) const{
+        return std::formatter<std::string>::format(cudapfe::to_hex(x.to_bytes()), context);
     }
 };
 

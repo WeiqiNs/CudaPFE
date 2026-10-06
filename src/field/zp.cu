@@ -3,13 +3,13 @@
 #include <cstddef>
 #include <cstdint>
 #include <string>
-#include <cufe/core.hpp>
+#include <cudapfe/core.hpp>
 #include "field/constants.hpp"
 #include "field/field.hpp"
 #include "support/access.hpp"
 #include "support/words.hpp"
 
-namespace cufe{
+namespace cudapfe{
     using detail::Access;
     using detail::Fr;
 

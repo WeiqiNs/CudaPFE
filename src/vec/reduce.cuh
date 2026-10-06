@@ -1,15 +1,15 @@
-#ifndef CUFE_VEC_REDUCE_CUH
-#define CUFE_VEC_REDUCE_CUH
+#ifndef CUDAPFE_VEC_REDUCE_CUH
+#define CUDAPFE_VEC_REDUCE_CUH
 
 #include <cstddef>
 #include <utility>
-#include <cufe/engine.hpp>
+#include <cudapfe/engine.hpp>
 #include "support/for_each.cuh"
 #include "support/hd.hpp"
 #include "vec/reduction.hpp"
 #include "vec/storage.hpp"
 
-namespace cufe::detail{
+namespace cudapfe::detail{
     template <class T, class Combine>
     struct ReduceOp{
         Reduction level;
@@ -17,7 +17,7 @@ namespace cufe::detail{
         T* out;
         Combine combine;
 
-        CUFE_HD void operator()(const std::size_t i) const{
+        CUDAPFE_HD void operator()(const std::size_t i) const{
             const auto group = level.group(i);
             auto total = in[group.first];
 #pragma unroll 1

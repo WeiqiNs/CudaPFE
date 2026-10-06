@@ -1,5 +1,5 @@
-#ifndef CUFE_FE_IPFE_HPP
-#define CUFE_FE_IPFE_HPP
+#ifndef CUDAPFE_FE_IPFE_HPP
+#define CUDAPFE_FE_IPFE_HPP
 
 #include <concepts>
 #include <cstddef>
@@ -7,9 +7,9 @@
 #include <format>
 #include <string_view>
 #include <vector>
-#include <cufe/cufe.hpp>
+#include <cudapfe/cudapfe.hpp>
 
-namespace cufe::IPFE{
+namespace cudapfe::IPFE{
     using IntVec = std::vector<std::int64_t>;
     using IntMatrix = std::vector<IntVec>;
 

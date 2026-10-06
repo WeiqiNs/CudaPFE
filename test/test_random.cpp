@@ -1,8 +1,8 @@
 #include <vector>
 #include <gtest/gtest.h>
-#include <cufe/cufe.hpp>
+#include <cudapfe/cudapfe.hpp>
 
-using namespace cufe;
+using namespace cudapfe;
 
 TEST(RandomTest, SeedMakesTheRandomSequenceReproducible){
     seed(bytes_of("seed-a"));

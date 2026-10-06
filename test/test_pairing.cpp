@@ -2,9 +2,9 @@
 #include <vector>
 #include <blst.h>
 #include <gtest/gtest.h>
-#include <cufe/cufe.hpp>
+#include <cudapfe/cudapfe.hpp>
 
-using namespace cufe;
+using namespace cudapfe;
 
 namespace{
     constexpr std::size_t kMultiPairs = 257;

@@ -1,10 +1,10 @@
-#ifndef CUFE_ENGINE_HPP
-#define CUFE_ENGINE_HPP
+#ifndef CUDAPFE_ENGINE_HPP
+#define CUDAPFE_ENGINE_HPP
 
 #include <concepts>
 #include <cstddef>
 
-namespace cufe{
+namespace cudapfe{
     struct Cpu{};
 
     struct Gpu{};

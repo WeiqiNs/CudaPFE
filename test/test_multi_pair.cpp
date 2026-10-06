@@ -5,11 +5,11 @@
 #include <utility>
 #include <vector>
 #include <gtest/gtest.h>
-#include <cufe/cufe.hpp>
+#include <cudapfe/cudapfe.hpp>
 #include <support/engines.hpp>
 #include "pairing/plan.hpp"
 
-using namespace cufe;
+using namespace cudapfe;
 
 namespace{
     struct Pairs{
@@ -153,7 +153,7 @@ TYPED_TEST(MultiPairTest, EmptyShapeGivesEmptyResult){
 }
 
 TEST(MultiPairTest, ItemsSpanSeveralPairsOnLargeBatches){
-    CUFE_REQUIRE_GPU();
+    CUDAPFE_REQUIRE_GPU();
     const PairShape shape{64, 2701, Spread::per_segment, Spread::shared};
     const ExponentPairs exponents{scalars_with_zeros(shape.segments * shape.length), scalars_with_zeros(shape.length)};
     const auto ps = mul_generator<G1>(Vec<Zp, Gpu>::upload(exponents.a));
@@ -163,7 +163,7 @@ TEST(MultiPairTest, ItemsSpanSeveralPairsOnLargeBatches){
 }
 
 TEST(MultiPairTest, EveryPlacementAgrees){
-    CUFE_REQUIRE_GPU();
+    CUDAPFE_REQUIRE_GPU();
     using detail::kHostFinalExpBelow;
     using detail::kHostMillerBelow;
     using detail::Placement;

@@ -1,5 +1,5 @@
-#ifndef CUFE_FE_IPFE_KKS_HPP
-#define CUFE_FE_IPFE_KKS_HPP
+#ifndef CUDAPFE_FE_IPFE_KKS_HPP
+#define CUDAPFE_FE_IPFE_KKS_HPP
 
 #include <concepts>
 #include <cstddef>
@@ -9,7 +9,7 @@
 #include <vector>
 #include "ipfe.hpp"
 
-namespace cufe::IPFE::KKS{
+namespace cudapfe::IPFE::KKS{
     template <Engine E>
     struct Msk{
         Zp eta;
@@ -114,7 +114,7 @@ namespace cufe::IPFE::KKS{
 
     template <Engine E>
     [[nodiscard]] PreparedSk<E> prepare(const Sk<E>& sk){
-        return {sk.count, cufe::prepare(sk.vec)};
+        return {sk.count, cudapfe::prepare(sk.vec)};
     }
 
     template <Engine E, class Key> requires std::same_as<Key, Sk<E>> || std::same_as<Key, PreparedSk<E>>

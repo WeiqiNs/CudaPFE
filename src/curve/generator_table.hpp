@@ -1,5 +1,5 @@
-#ifndef CUFE_CURVE_GENERATOR_TABLE_HPP
-#define CUFE_CURVE_GENERATOR_TABLE_HPP
+#ifndef CUDAPFE_CURVE_GENERATOR_TABLE_HPP
+#define CUDAPFE_CURVE_GENERATOR_TABLE_HPP
 
 #include <cstddef>
 #include <vector>
@@ -7,7 +7,7 @@
 #include "field/field.hpp"
 #include "support/hd.hpp"
 
-namespace cufe::detail{
+namespace cudapfe::detail{
     inline constexpr std::size_t kWindowBits = 8;
     inline constexpr std::size_t kWindows = 32;
     inline constexpr std::size_t kWindowDigits = (std::size_t{1} << kWindowBits) - 1;
@@ -39,7 +39,7 @@ namespace cufe::detail{
     }
 
     template <class F>
-    [[nodiscard]] CUFE_HD Jacobian<F> fixed_base_mul(const Affine<F>* table, const Fr& scalar){
+    [[nodiscard]] CUDAPFE_HD Jacobian<F> fixed_base_mul(const Affine<F>* table, const Fr& scalar){
         constexpr Word mask = kWindowDigits;
         const auto words = scalar.canonical();
         auto result = Jacobian<F>::identity();

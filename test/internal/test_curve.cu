@@ -12,9 +12,9 @@
 #include "support/for_each.cuh"
 #include "support/hd.hpp"
 
-using namespace cufe;
-using namespace cufe::detail;
-using namespace cufe::test;
+using namespace cudapfe;
+using namespace cudapfe::detail;
+using namespace cudapfe::test;
 
 namespace{
     constexpr std::size_t kRandomPoints = 100;
@@ -34,7 +34,7 @@ namespace{
     };
 
     template <class F>
-    CUFE_HD CurveResults<F> evaluate(const CurveInput<F>& in){
+    CUDAPFE_HD CurveResults<F> evaluate(const CurveInput<F>& in){
         return {
             to_affine(add(in.p, in.q)), to_affine(add_mixed(in.p, to_affine(in.q))), to_affine(dbl(in.p)),
             to_affine(neg(in.p)), to_affine(mul(in.p, in.k)), to_affine(in.p)
@@ -46,7 +46,7 @@ namespace{
         const CurveInput<F>* inputs;
         CurveResults<F>* results;
 
-        CUFE_HD void operator()(const std::size_t i) const{ results[i] = evaluate(inputs[i]); }
+        CUDAPFE_HD void operator()(const std::size_t i) const{ results[i] = evaluate(inputs[i]); }
     };
 
     template <class F>
@@ -149,7 +149,7 @@ TYPED_TEST(CurveTest, BatchToAffineMatchesSingle){
 }
 
 TYPED_TEST(CurveTest, DeviceMatchesHost){
-    CUFE_REQUIRE_GPU();
+    CUDAPFE_REQUIRE_GPU();
     using F = TypeParam;
     const auto inputs = curve_inputs<F>();
     DeviceArray<CurveInput<F>> device_inputs(inputs.size());

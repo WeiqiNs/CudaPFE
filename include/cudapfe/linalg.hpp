@@ -1,5 +1,5 @@
-#ifndef CUFE_LINALG_HPP
-#define CUFE_LINALG_HPP
+#ifndef CUDAPFE_LINALG_HPP
+#define CUDAPFE_LINALG_HPP
 
 #include <cstddef>
 #include <span>
@@ -9,7 +9,7 @@
 #include "vec.hpp"
 #include "vector.hpp"
 
-namespace cufe{
+namespace cudapfe{
     template <Engine E>
     class Matrix;
 

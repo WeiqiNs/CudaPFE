@@ -1,15 +1,15 @@
-#ifndef CUFE_DLOG_BSGS_HPP
-#define CUFE_DLOG_BSGS_HPP
+#ifndef CUDAPFE_DLOG_BSGS_HPP
+#define CUDAPFE_DLOG_BSGS_HPP
 
 #include <algorithm>
 #include <cstddef>
 #include <cstdint>
-#include <cufe/dlog.hpp>
-#include <cufe/errors.hpp>
+#include <cudapfe/dlog.hpp>
+#include <cudapfe/errors.hpp>
 #include "support/hd.hpp"
 #include "vec/reduction.hpp"
 
-namespace cufe::detail{
+namespace cudapfe::detail{
     struct Steps{
         std::int64_t lo;
         std::uint64_t span;
@@ -42,7 +42,7 @@ namespace cufe::detail{
         return {range.lo, span, baby, span / baby + 1};
     }
 
-    [[nodiscard]] CUFE_HD constexpr std::int64_t offset(const std::int64_t lo, const std::uint64_t k){
+    [[nodiscard]] CUDAPFE_HD constexpr std::int64_t offset(const std::int64_t lo, const std::uint64_t k){
         return static_cast<std::int64_t>(static_cast<std::uint64_t>(lo) + k);
     }
 
@@ -51,11 +51,11 @@ namespace cufe::detail{
         std::uint64_t length;
         std::uint64_t per_ladder;
 
-        [[nodiscard]] CUFE_HD constexpr std::size_t ladders_per_entry() const{ return ceil_div(length, per_ladder); }
+        [[nodiscard]] CUDAPFE_HD constexpr std::size_t ladders_per_entry() const{ return ceil_div(length, per_ladder); }
 
-        [[nodiscard]] CUFE_HD constexpr std::size_t ladder_count() const{ return entries * ladders_per_entry(); }
+        [[nodiscard]] CUDAPFE_HD constexpr std::size_t ladder_count() const{ return entries * ladders_per_entry(); }
 
-        [[nodiscard]] CUFE_HD constexpr Ladder ladder(const std::size_t index) const{
+        [[nodiscard]] CUDAPFE_HD constexpr Ladder ladder(const std::size_t index) const{
             const auto per_entry = ladders_per_entry();
             const auto first = index % per_entry * per_ladder;
             const auto remaining = length - first;

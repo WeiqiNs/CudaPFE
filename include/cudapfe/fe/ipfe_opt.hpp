@@ -1,5 +1,5 @@
-#ifndef CUFE_FE_IPFE_OPT_HPP
-#define CUFE_FE_IPFE_OPT_HPP
+#ifndef CUDAPFE_FE_IPFE_OPT_HPP
+#define CUDAPFE_FE_IPFE_OPT_HPP
 
 #include <concepts>
 #include <cstddef>
@@ -8,7 +8,7 @@
 #include <vector>
 #include "ipfe.hpp"
 
-namespace cufe::IPFE::OPT{
+namespace cudapfe::IPFE::OPT{
     inline constexpr std::size_t b_size = 4;
 
     template <Engine E>
@@ -123,7 +123,7 @@ namespace cufe::IPFE::OPT{
 
     template <Engine E>
     [[nodiscard]] PreparedSk<E> prepare(const Sk<E>& sk){
-        return {sk.count, cufe::prepare(detail::key_points(sk))};
+        return {sk.count, cudapfe::prepare(detail::key_points(sk))};
     }
 
     template <Engine E, class Key> requires std::same_as<Key, Sk<E>> || std::same_as<Key, PreparedSk<E>>

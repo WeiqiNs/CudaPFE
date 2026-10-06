@@ -1,13 +1,13 @@
-#ifndef CUFE_SUPPORT_FOR_EACH_CUH
-#define CUFE_SUPPORT_FOR_EACH_CUH
+#ifndef CUDAPFE_SUPPORT_FOR_EACH_CUH
+#define CUDAPFE_SUPPORT_FOR_EACH_CUH
 
 #include <concepts>
 #include <cstddef>
 #include <string>
-#include <cufe/engine.hpp>
+#include <cudapfe/engine.hpp>
 #include "support/runtime.hpp"
 
-namespace cufe::detail{
+namespace cudapfe::detail{
     inline constexpr std::size_t kMaxBlocks = (std::size_t{1} << 31) - 1;
 
     template <class Op>

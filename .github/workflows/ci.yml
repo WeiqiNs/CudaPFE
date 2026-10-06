@@ -53,16 +53,16 @@ jobs:
         uses: actions/checkout@v7
 
       - name: Configure an optimized build without the tests
-        run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCUFE_BUILD_TESTS=OFF
+        run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCUDAPFE_BUILD_TESTS=OFF
 
       - name: Build
         run: cmake --build build --parallel
 
       - name: Install the package
-        run: cmake --install build --prefix /opt/cufe
+        run: cmake --install build --prefix /opt/cudapfe
 
       - name: Build and run the demo against the installed package
         run: |
-          cmake -S demo -B demo/build -G Ninja -DCMAKE_PREFIX_PATH=/opt/cufe
+          cmake -S demo -B demo/build -G Ninja -DCMAKE_PREFIX_PATH=/opt/cudapfe
           cmake --build demo/build --parallel
           ./demo/build/demo

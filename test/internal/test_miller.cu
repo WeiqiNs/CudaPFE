@@ -13,9 +13,9 @@
 #include "support/for_each.cuh"
 #include "support/hd.hpp"
 
-using namespace cufe;
-using namespace cufe::detail;
-using namespace cufe::test;
+using namespace cudapfe;
+using namespace cudapfe::detail;
+using namespace cudapfe::test;
 
 namespace{
     constexpr std::size_t kLineSamples = 20;
@@ -46,7 +46,7 @@ namespace{
         const G2Affine* qs;
         Line* lines;
 
-        CUFE_HD void operator()(const std::size_t i) const{ prepare_lines(qs[i], lines + i * kLineCount); }
+        CUDAPFE_HD void operator()(const std::size_t i) const{ prepare_lines(qs[i], lines + i * kLineCount); }
     };
 
     struct MillerOp{
@@ -55,7 +55,7 @@ namespace{
         const Line* lines;
         Fp12* results;
 
-        CUFE_HD void operator()(const std::size_t i) const{
+        CUDAPFE_HD void operator()(const std::size_t i) const{
             const auto first = i * kPairsPerItem;
             results[i] = miller(PreparedPairs{ps + first, qs + first, lines + first * kLineCount, kPairsPerItem});
         }
@@ -65,7 +65,7 @@ namespace{
         const Fp12* values;
         Fp12* results;
 
-        CUFE_HD void operator()(const std::size_t i) const{ results[i] = final_exp(values[i]); }
+        CUDAPFE_HD void operator()(const std::size_t i) const{ results[i] = final_exp(values[i]); }
     };
 
     template <class F>
@@ -156,7 +156,7 @@ TEST(MillerTest, FinalExpIsTheCubeOfTheTextbookPower){
 }
 
 TEST(MillerTest, DeviceMatchesHost){
-    CUFE_REQUIRE_GPU();
+    CUDAPFE_REQUIRE_GPU();
     constexpr std::size_t pairs = kDeviceItems * kPairsPerItem;
     const auto ps = affine_points<Fp>(pairs);
     const auto qs = affine_points<Fp2>(pairs);

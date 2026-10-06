@@ -5,8 +5,8 @@
 #include <gtest/gtest.h>
 #include "scheme_types.hpp"
 
-using cufe::QFE::IntMatrix;
-using cufe::QFE::IntVec;
+using cudapfe::QFE::IntMatrix;
+using cudapfe::QFE::IntVec;
 
 namespace{
     constexpr std::int64_t kEntryBound = 2;
@@ -95,11 +95,11 @@ TYPED_TEST(QuadraticTest, HandlesVectorsOfLengthOne){
 TYPED_TEST(QuadraticTest, RejectsInputsOfTheWrongShape){
     const auto keys = TypeParam::setup(3);
 
-    EXPECT_THROW((void)keygen(keys.msk, IntMatrix{{1, 2}, {3, 4}, {5, 6}}), cufe::ShapeError);
-    EXPECT_THROW((void)keygen(keys.msk, IntMatrix{{1, 2}, {3, 4}}), cufe::ShapeError);
-    EXPECT_THROW((void)enc(keys.pk, IntVec{1, 2}, IntVec{1, 2, 3}), cufe::ShapeError);
-    EXPECT_THROW((void)enc(keys.pk, IntVec{1, 2, 3}, IntVec{1, 2, 3, 4}), cufe::ShapeError);
-    EXPECT_THROW((void)enc(keys.pk, IntMatrix{{1, 2, 3}, {4, 5, 6}}, IntMatrix{{1, 2, 3}}), cufe::ShapeError);
+    EXPECT_THROW((void)keygen(keys.msk, IntMatrix{{1, 2}, {3, 4}, {5, 6}}), cudapfe::ShapeError);
+    EXPECT_THROW((void)keygen(keys.msk, IntMatrix{{1, 2}, {3, 4}}), cudapfe::ShapeError);
+    EXPECT_THROW((void)enc(keys.pk, IntVec{1, 2}, IntVec{1, 2, 3}), cudapfe::ShapeError);
+    EXPECT_THROW((void)enc(keys.pk, IntVec{1, 2, 3}, IntVec{1, 2, 3, 4}), cudapfe::ShapeError);
+    EXPECT_THROW((void)enc(keys.pk, IntMatrix{{1, 2, 3}, {4, 5, 6}}, IntMatrix{{1, 2, 3}}), cudapfe::ShapeError);
 }
 
 TYPED_TEST(QuadraticTest, RejectsIncompatibleBatchCounts){
@@ -109,7 +109,7 @@ TYPED_TEST(QuadraticTest, RejectsIncompatibleBatchCounts){
     const IntMatrix lefts{{1, 2}, {3, 4}, {5, 6}};
     const IntMatrix rights{{1, 1}, {0, 1}, {1, 0}};
 
-    EXPECT_THROW((void)decrypt(sks, enc(keys.pk, lefts, rights)), cufe::ShapeError);
+    EXPECT_THROW((void)decrypt(sks, enc(keys.pk, lefts, rights)), cudapfe::ShapeError);
     EXPECT_EQ(decrypt(sks, enc(keys.pk, IntMatrix{lefts[0], lefts[1]}, IntMatrix{rights[0], rights[1]})),
         (Results{3, 3}));
     EXPECT_TRUE(decrypt(keygen(keys.msk, std::vector<IntMatrix>{}), enc(keys.pk, IntMatrix{}, IntMatrix{})).empty());

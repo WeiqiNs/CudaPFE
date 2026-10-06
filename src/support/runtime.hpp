@@ -1,11 +1,11 @@
-#ifndef CUFE_SUPPORT_RUNTIME_HPP
-#define CUFE_SUPPORT_RUNTIME_HPP
+#ifndef CUDAPFE_SUPPORT_RUNTIME_HPP
+#define CUDAPFE_SUPPORT_RUNTIME_HPP
 
 #include <string_view>
 #include <cuda_runtime.h>
-#include <cufe/errors.hpp>
+#include <cudapfe/errors.hpp>
 
-namespace cufe::detail{
+namespace cudapfe::detail{
     void check(cudaError_t status, std::string_view operation);
 
     class GpuRuntime{

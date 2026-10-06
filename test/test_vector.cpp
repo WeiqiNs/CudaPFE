@@ -1,8 +1,8 @@
 #include <vector>
 #include <gtest/gtest.h>
-#include <cufe/cufe.hpp>
+#include <cudapfe/cudapfe.hpp>
 
-using namespace cufe;
+using namespace cudapfe;
 
 namespace{
     Vector vector(const std::vector<int>& values){

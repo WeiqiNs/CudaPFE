@@ -1,5 +1,5 @@
-#ifndef CUFE_TEST_SAMPLES_HPP
-#define CUFE_TEST_SAMPLES_HPP
+#ifndef CUDAPFE_TEST_SAMPLES_HPP
+#define CUDAPFE_TEST_SAMPLES_HPP
 
 #include <algorithm>
 #include <array>
@@ -9,7 +9,7 @@
 #include <vector>
 #include "field/field.hpp"
 
-namespace cufe::test{
+namespace cudapfe::test{
     template <class Params>
     std::vector<detail::Words<Params::words>> canonical_samples(const std::size_t random_count){
         using Words = detail::Words<Params::words>;

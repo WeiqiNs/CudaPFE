@@ -10,9 +10,9 @@
 #include "support/for_each.cuh"
 #include "support/hd.hpp"
 
-using namespace cufe;
-using namespace cufe::detail;
-using namespace cufe::test;
+using namespace cudapfe;
+using namespace cudapfe::detail;
+using namespace cudapfe::test;
 
 namespace{
     constexpr std::size_t kRandomSamples = 1000;
@@ -27,7 +27,7 @@ namespace{
     };
 
     template <class F>
-    CUFE_HD Results<F> evaluate(const F& x, const F& y){
+    CUDAPFE_HD Results<F> evaluate(const F& x, const F& y){
         constexpr auto exponent = kFpSqrtExponent;
         return {
             x + y, x - y, x * y, x.square(), x.inverse(), -x, x.pow(exponent), F::from_canonical(x.canonical()),
@@ -41,7 +41,7 @@ namespace{
         const F* ys;
         Results<F>* results;
 
-        CUFE_HD void operator()(const std::size_t i) const{ results[i] = evaluate(xs[i], ys[i]); }
+        CUDAPFE_HD void operator()(const std::size_t i) const{ results[i] = evaluate(xs[i], ys[i]); }
     };
 
     template <class F>
@@ -49,7 +49,7 @@ namespace{
         const F* xs;
         F* results;
 
-        CUFE_HD void operator()(const std::size_t i) const{
+        CUDAPFE_HD void operator()(const std::size_t i) const{
             if (i % 2 == 1) results[i] = xs[i].inverse();
             else results[i] = xs[i].square();
         }
@@ -102,7 +102,7 @@ TYPED_TEST(FieldTest, CanonicalRoundTrips){
 }
 
 TYPED_TEST(FieldTest, DeviceMatchesHost){
-    CUFE_REQUIRE_GPU();
+    CUDAPFE_REQUIRE_GPU();
     using F = Field<TypeParam>;
     const auto xs = field_samples<TypeParam>(kRandomSamples);
     const auto ys = partners(xs);
@@ -123,7 +123,7 @@ TYPED_TEST(FieldTest, DeviceMatchesHost){
 }
 
 TYPED_TEST(FieldTest, InverseWorksInDivergentThreads){
-    CUFE_REQUIRE_GPU();
+    CUDAPFE_REQUIRE_GPU();
     using F = Field<TypeParam>;
     const auto xs = field_samples<TypeParam>(kRandomSamples);
     DeviceArray<F> device_xs(xs.size());

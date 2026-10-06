@@ -1,5 +1,5 @@
-#ifndef CUFE_FIELD_FIELD_HPP
-#define CUFE_FIELD_FIELD_HPP
+#ifndef CUDAPFE_FIELD_FIELD_HPP
+#define CUDAPFE_FIELD_FIELD_HPP
 
 #include <cstddef>
 #include <cstdint>
@@ -9,7 +9,7 @@
 #include "support/hd.hpp"
 #include "support/words.hpp"
 
-namespace cufe::detail{
+namespace cudapfe::detail{
     struct FpParams{
         using Base = bls12_381::fp_t;
         static constexpr std::size_t words = 6;
@@ -25,7 +25,7 @@ namespace cufe::detail{
     };
 
     template <class T, std::size_t M>
-    CUFE_HD T pow(const T& base, const Words<M>& exponent){
+    CUDAPFE_HD T pow(const T& base, const Words<M>& exponent){
         auto result = T::one();
 #pragma unroll 1
         for (auto i = bit_length(exponent); i-- > 0;){
@@ -42,11 +42,11 @@ namespace cufe::detail{
 
         typename Params::Base value;
 
-        [[nodiscard]] CUFE_HD static Field zero(){ return from_montgomery(Words<N>{}); }
+        [[nodiscard]] CUDAPFE_HD static Field zero(){ return from_montgomery(Words<N>{}); }
 
-        [[nodiscard]] CUFE_HD static Field one(){ return Field{Params::Base::one()}; }
+        [[nodiscard]] CUDAPFE_HD static Field one(){ return Field{Params::Base::one()}; }
 
-        [[nodiscard]] CUFE_HD static Field from_montgomery(const Words<N>& words){
+        [[nodiscard]] CUDAPFE_HD static Field from_montgomery(const Words<N>& words){
             Field field;
 #ifdef __CUDA_ARCH__
             for (std::size_t i = 0; i < N; ++i){
@@ -59,13 +59,13 @@ namespace cufe::detail{
             return field;
         }
 
-        [[nodiscard]] CUFE_HD static Field from_canonical(const Words<N>& words){
+        [[nodiscard]] CUDAPFE_HD static Field from_canonical(const Words<N>& words){
             auto field = from_montgomery(words);
             field.value.to();
             return field;
         }
 
-        [[nodiscard]] CUFE_HD Words<N> montgomery() const{
+        [[nodiscard]] CUDAPFE_HD Words<N> montgomery() const{
             Words<N> words;
 #ifdef __CUDA_ARCH__
             for (std::size_t i = 0; i < N; ++i) words[i] = Word{value[2 * i]} | Word{value[2 * i + 1]} << 32;
@@ -75,17 +75,17 @@ namespace cufe::detail{
             return words;
         }
 
-        [[nodiscard]] CUFE_HD Words<N> canonical() const{
+        [[nodiscard]] CUDAPFE_HD Words<N> canonical() const{
             auto field = *this;
             field.value.from();
             return field.montgomery();
         }
 
-        [[nodiscard]] CUFE_HD bool is_zero() const{ return value.is_zero(); }
+        [[nodiscard]] CUDAPFE_HD bool is_zero() const{ return value.is_zero(); }
 
-        [[nodiscard]] CUFE_HD Field square() const{ return Field{sqr(value)}; }
+        [[nodiscard]] CUDAPFE_HD Field square() const{ return Field{sqr(value)}; }
 
-        [[nodiscard]] CUFE_HD Field inverse() const{
+        [[nodiscard]] CUDAPFE_HD Field inverse() const{
 #ifdef __CUDA_ARCH__
             constexpr auto exponent = Params::inverse_exponent;
             return pow(exponent);
@@ -95,21 +95,21 @@ namespace cufe::detail{
         }
 
         template <std::size_t M>
-        [[nodiscard]] CUFE_HD Field pow(const Words<M>& exponent) const{ return detail::pow(*this, exponent); }
+        [[nodiscard]] CUDAPFE_HD Field pow(const Words<M>& exponent) const{ return detail::pow(*this, exponent); }
 
-        friend CUFE_HD Field operator+(const Field& x, const Field& y){ return Field{x.value + y.value}; }
+        friend CUDAPFE_HD Field operator+(const Field& x, const Field& y){ return Field{x.value + y.value}; }
 
-        friend CUFE_HD Field operator-(const Field& x, const Field& y){ return Field{x.value - y.value}; }
+        friend CUDAPFE_HD Field operator-(const Field& x, const Field& y){ return Field{x.value - y.value}; }
 
-        friend CUFE_HD Field operator*(const Field& x, const Field& y){ return Field{x.value * y.value}; }
+        friend CUDAPFE_HD Field operator*(const Field& x, const Field& y){ return Field{x.value * y.value}; }
 
-        friend CUFE_HD Field operator-(const Field& x){
+        friend CUDAPFE_HD Field operator-(const Field& x){
             auto negated = x;
             negated.value.cneg(true);
             return negated;
         }
 
-        friend CUFE_HD bool operator==(const Field& x, const Field& y){
+        friend CUDAPFE_HD bool operator==(const Field& x, const Field& y){
             const auto left = x.montgomery();
             const auto right = y.montgomery();
             Word difference = 0;

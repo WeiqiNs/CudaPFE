@@ -11,9 +11,9 @@
 #include "field/field.hpp"
 #include "field/tower.hpp"
 
-using namespace cufe;
-using namespace cufe::detail;
-using namespace cufe::test;
+using namespace cudapfe;
+using namespace cudapfe::detail;
+using namespace cudapfe::test;
 
 namespace{
     constexpr std::size_t kPoints = 100;

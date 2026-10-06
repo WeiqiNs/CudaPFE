@@ -1,14 +1,14 @@
-#ifndef CUFE_SUPPORT_WORDS_HPP
-#define CUFE_SUPPORT_WORDS_HPP
+#ifndef CUDAPFE_SUPPORT_WORDS_HPP
+#define CUDAPFE_SUPPORT_WORDS_HPP
 
 #include <cstddef>
 #include <cstdint>
-#include <cufe/core.hpp>
+#include <cudapfe/core.hpp>
 #include "support/hd.hpp"
 
-namespace cufe::detail{
+namespace cudapfe::detail{
     template <std::size_t N>
-    constexpr CUFE_HD Words<N> add_word(Words<N> words, Word carry){
+    constexpr CUDAPFE_HD Words<N> add_word(Words<N> words, Word carry){
         for (auto& word : words){
             word += carry;
             carry = word < carry;
@@ -17,7 +17,7 @@ namespace cufe::detail{
     }
 
     template <std::size_t N>
-    constexpr CUFE_HD Words<N> sub_word(Words<N> words, Word borrow){
+    constexpr CUDAPFE_HD Words<N> sub_word(Words<N> words, Word borrow){
         for (auto& word : words){
             const auto before = word;
             word -= borrow;
@@ -27,7 +27,7 @@ namespace cufe::detail{
     }
 
     template <std::size_t N>
-    constexpr CUFE_HD Words<N> shift_right(const Words<N>& words, const unsigned shift){
+    constexpr CUDAPFE_HD Words<N> shift_right(const Words<N>& words, const unsigned shift){
         Words<N> shifted{};
         const std::size_t skip = shift / 64;
         const unsigned bits = shift % 64;
@@ -39,7 +39,7 @@ namespace cufe::detail{
     }
 
     template <std::size_t N>
-    constexpr CUFE_HD bool less(const Words<N>& x, const Words<N>& y){
+    constexpr CUDAPFE_HD bool less(const Words<N>& x, const Words<N>& y){
         for (std::size_t i = N; i-- > 0;){
             if (x[i] != y[i]) return x[i] < y[i];
         }
@@ -47,7 +47,7 @@ namespace cufe::detail{
     }
 
     template <std::size_t N>
-    constexpr CUFE_HD std::size_t bit_length(const Words<N>& words){
+    constexpr CUDAPFE_HD std::size_t bit_length(const Words<N>& words){
         for (std::size_t i = N; i-- > 0;){
             if (words[i] == 0) continue;
             std::size_t length = 64 * i;
@@ -58,7 +58,7 @@ namespace cufe::detail{
     }
 
     template <std::size_t N>
-    constexpr CUFE_HD bool bit(const Words<N>& words, const std::size_t index){
+    constexpr CUDAPFE_HD bool bit(const Words<N>& words, const std::size_t index){
         return (words[index / 64] >> (index % 64)) & 1;
     }
 

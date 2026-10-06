@@ -1,4 +1,4 @@
-#include <cufe/core.hpp>
+#include <cudapfe/core.hpp>
 #include "curve/curve.hpp"
 #include "curve/encoding.hpp"
 #include "curve/generator_table.hpp"
@@ -6,7 +6,7 @@
 #include "field/tower.hpp"
 #include "support/access.hpp"
 
-namespace cufe{
+namespace cudapfe{
     using detail::Access;
 
     namespace{

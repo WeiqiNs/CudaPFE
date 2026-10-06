@@ -1,9 +1,9 @@
-#ifndef CUFE_ERRORS_HPP
-#define CUFE_ERRORS_HPP
+#ifndef CUDAPFE_ERRORS_HPP
+#define CUDAPFE_ERRORS_HPP
 
 #include <stdexcept>
 
-namespace cufe{
+namespace cudapfe{
     class Error : public std::runtime_error{
     public:
         using std::runtime_error::runtime_error;

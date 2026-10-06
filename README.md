@@ -1,23 +1,23 @@
-# CUDA Functional Encryption Library (LibCuFE)
+# Pairing-based Functional Encryption in CUDA (CudaPFE)
 
-LibCuFE is a C++20 and CUDA library for BLS12-381 pairings and pairing-based functional encryption. Batch operations
+CudaPFE is a C++20 and CUDA library for BLS12-381 pairings and pairing-based functional encryption. Batch operations
 run on a CPU engine or a CUDA engine; both execute the same `__host__ __device__` arithmetic, which is built on
 [sppark](https://github.com/supranational/sppark)'s Montgomery fields and checked bit for bit against
-[blst](https://github.com/supranational/blst). LibCuFE makes no constant-time guarantees and is meant for research
+[blst](https://github.com/supranational/blst). CudaPFE makes no constant-time guarantees and is meant for research
 prototypes.
 
 ## Functional encryption
 
-`CuFE::fe` is a header-only target in `include/cufe/fe/` with batch-first ports of the schemes in
-[LibPFE](https://github.com/WeiqiNs/LibPFE): the function-hiding inner-product schemes `cufe::IPFE::{BJK, TAO, KIM,
-LIN, KKS, OPT}` (`ipfe_<scheme>.hpp`) and the quadratic schemes `cufe::QFE::{BCFG, SGP}` (`qfe_<scheme>.hpp`). Every
+`CudaPFE::fe` is a header-only target in `include/cudapfe/fe/` with batch-first ports of the schemes in
+[LibPFE](https://github.com/WeiqiNs/LibPFE): the function-hiding inner-product schemes `cudapfe::IPFE::{BJK, TAO, KIM,
+LIN, KKS, OPT}` (`ipfe_<scheme>.hpp`) and the quadratic schemes `cudapfe::QFE::{BCFG, SGP}` (`qfe_<scheme>.hpp`). Every
 scheme is a template over the engine, chosen once at `setup<Cpu>(n)` or `setup<Gpu>(n)`; LibPFE's README describes
-the schemes and their papers. Consumers link `CuFE::fe`, which brings in `CuFE::core`.
+the schemes and their papers. Consumers link `CudaPFE::fe`, which brings in `CudaPFE::core`.
 
 ```cpp
-#include <cufe/fe/ipfe_opt.hpp>
+#include <cudapfe/fe/ipfe_opt.hpp>
 
-using namespace cufe;
+using namespace cudapfe;
 const auto msk = IPFE::OPT::setup<Gpu>(3);
 const DlogTable<Gpu> table(IPFE::OPT::base(), {-1000, 1000});
 const auto keys = IPFE::OPT::keygen(msk, IPFE::IntMatrix{{1, 2, 3}, {0, 1, 0}});
@@ -41,7 +41,7 @@ const auto results = IPFE::OPT::dec(table, IPFE::OPT::prepare(keys), ct);   // {
 
 ## Building
 
-LibCuFE builds on Linux with CMake 3.25 or newer, a C++20 compiler, the CUDA toolkit (13.x) and git. blst and
+CudaPFE builds on Linux with CMake 3.25 or newer, a C++20 compiler, the CUDA toolkit (13.x) and git. blst and
 GoogleTest are fetched at pinned commits; sppark is vendored under `third_party/sppark`.
 
 ```bash
@@ -52,26 +52,26 @@ cmake --install build
 ```
 
 Device code is compiled for `CMAKE_CUDA_ARCHITECTURES`, which defaults to `120`; pass `-DCMAKE_CUDA_ARCHITECTURES=<list>`
-for other GPUs. `-DCUFE_PTXAS_VERBOSE=ON` prints the register and spill report of every kernel.
+for other GPUs. `-DCUDAPFE_PTXAS_VERBOSE=ON` prints the register and spill report of every kernel.
 
 A GPU is not required to build or test: without a CUDA device the GPU test cases report as skipped. Setting
 `CUDA_VISIBLE_DEVICES=` reproduces that on a machine that has one.
 
 ## Benchmarks
 
-[`bench/bench_core.cpp`](bench/bench_core.cpp) builds as `cufe_bench` and [`bench/bench_fe.cpp`](bench/bench_fe.cpp)
-as `cufe_bench_fe` when `-DCUFE_BUILD_BENCH=ON` is set; both need a CUDA device to run:
+[`bench/bench_core.cpp`](bench/bench_core.cpp) builds as `cudapfe_bench` and [`bench/bench_fe.cpp`](bench/bench_fe.cpp)
+as `cudapfe_bench_fe` when `-DCUDAPFE_BUILD_BENCH=ON` is set; both need a CUDA device to run:
 
 ```bash
 cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_CUDA_COMPILER=/usr/local/cuda/bin/nvcc \
-    -DCUFE_BUILD_BENCH=ON
-cmake --build build --target cufe_bench cufe_bench_fe
-./build/bench/cufe_bench            # full sizes
-./build/bench/cufe_bench --quick    # small sizes, a few seconds
-./build/bench/cufe_bench_fe         # every FE scheme; --quick for small sizes
+    -DCUDAPFE_BUILD_BENCH=ON
+cmake --build build --target cudapfe_bench cudapfe_bench_fe
+./build/bench/cudapfe_bench            # full sizes
+./build/bench/cudapfe_bench --quick    # small sizes, a few seconds
+./build/bench/cudapfe_bench_fe         # every FE scheme; --quick for small sizes
 ```
 
-`cufe_bench` prints Markdown tables for pairing throughput, multi-pairing latency, batch shapes, fixed-base
+`cudapfe_bench` prints Markdown tables for pairing throughput, multi-pairing latency, batch shapes, fixed-base
 multiplication, matrix inversion and product, and discrete-log tables. Each table compares the Gpu engine with whichever
 of the Cpu engine, blst on one core and blst on every hardware thread its columns name. The header names the GPU, its SM
 count, the CPU thread count, the build type and the placement thresholds compiled in. Every timing is the median of
@@ -80,21 +80,21 @@ single run. Every table checks a result of the Gpu engine against blst (or, for 
 independent answer) and aborts on a mismatch. Each table's caption states when a baseline is timed on a sample and
 scaled.
 
-`cufe_bench_fe` prints LibPFE's table (Setup, KeyGen, Enc, Dec, Prepare and Prepared Dec, in ms per call) for every
+`cudapfe_bench_fe` prints LibPFE's table (Setup, KeyGen, Enc, Dec, Prepare and Prepared Dec, in ms per call) for every
 scheme on both engines, once for single key/ciphertext pairs at growing n and once for batches. Each call handles the
 whole batch, and every Dec is checked against the result computed in plain integers. A case the single-threaded Cpu
 engine would take too long on, or that does not fit on the device, prints the reason in place of its times.
 
 ### Calibrating the host placement
 
-On the Gpu engine, `pair_segments` moves tiny workloads to the host: shapes below `CUFE_HOST_MILLER_BELOW` pairs run
-entirely on the host, and shapes below `CUFE_HOST_FINAL_EXP_BELOW` segments run only their final exponentiations there.
+On the Gpu engine, `pair_segments` moves tiny workloads to the host: shapes below `CUDAPFE_HOST_MILLER_BELOW` pairs run
+entirely on the host, and shapes below `CUDAPFE_HOST_FINAL_EXP_BELOW` segments run only their final exponentiations there.
 The defaults are the cache variables in `CMakeLists.txt`, chosen from measurements on one GPU; recalibrate for another:
 
-1. Build a device-only copy with `-DCUFE_HOST_MILLER_BELOW=0 -DCUFE_HOST_FINAL_EXP_BELOW=0` and run
-   `cufe_bench --placement-sweep`. It times every shape of S segments of n pairs (powers of two up to 256, at most 1024
+1. Build a device-only copy with `-DCUDAPFE_HOST_MILLER_BELOW=0 -DCUDAPFE_HOST_FINAL_EXP_BELOW=0` and run
+   `cudapfe_bench --placement-sweep`. It times every shape of S segments of n pairs (powers of two up to 256, at most 1024
    pairs) on the Gpu and Cpu engines. The smallest pair count at which the Gpu engine wins is the Miller threshold.
-2. Build a second copy with `-DCUFE_HOST_MILLER_BELOW=0` and a `CUFE_HOST_FINAL_EXP_BELOW` above 256, so the Gpu
+2. Build a second copy with `-DCUDAPFE_HOST_MILLER_BELOW=0` and a `CUDAPFE_HOST_FINAL_EXP_BELOW` above 256, so the Gpu
    engine always finishes on the host, and run the sweep again. Comparing its Gpu column with the device-only one gives
    the segment count at which device final exponentiation starts to win.
 3. Configure the real build with the two measured values.
@@ -106,4 +106,4 @@ across candidate values.
 
 ## License
 
-LibCuFE is licensed under the Apache License 2.0.
+CudaPFE is licensed under the Apache License 2.0.

@@ -4,8 +4,8 @@
 #include <gtest/gtest.h>
 #include "scheme_types.hpp"
 
-using cufe::IPFE::IntMatrix;
-using cufe::IPFE::IntVec;
+using cudapfe::IPFE::IntMatrix;
+using cudapfe::IPFE::IntVec;
 
 namespace{
     constexpr std::int64_t kEntryBound = 5;
@@ -97,12 +97,12 @@ TYPED_TEST(InnerProductTest, HandlesVectorsOfLengthOne){
 TYPED_TEST(InnerProductTest, RejectsVectorsOfTheWrongLength){
     const auto msk = TypeParam::setup(4);
 
-    EXPECT_THROW((void)keygen(msk, IntVec{1, 2, 3}), cufe::ShapeError);
-    EXPECT_THROW((void)keygen(msk, IntVec{1, 2, 3, 4, 5}), cufe::ShapeError);
-    EXPECT_THROW((void)keygen(msk, IntMatrix{{1, 2, 3, 4}, {1, 2, 3}}), cufe::ShapeError);
-    EXPECT_THROW((void)enc(msk, IntVec{1, 2, 3}), cufe::ShapeError);
-    EXPECT_THROW((void)enc(msk, IntVec{1, 2, 3, 4, 5}), cufe::ShapeError);
-    EXPECT_THROW((void)enc(msk, IntMatrix{{1, 2, 3, 4}, {1, 2, 3, 4, 5}}), cufe::ShapeError);
+    EXPECT_THROW((void)keygen(msk, IntVec{1, 2, 3}), cudapfe::ShapeError);
+    EXPECT_THROW((void)keygen(msk, IntVec{1, 2, 3, 4, 5}), cudapfe::ShapeError);
+    EXPECT_THROW((void)keygen(msk, IntMatrix{{1, 2, 3, 4}, {1, 2, 3}}), cudapfe::ShapeError);
+    EXPECT_THROW((void)enc(msk, IntVec{1, 2, 3}), cudapfe::ShapeError);
+    EXPECT_THROW((void)enc(msk, IntVec{1, 2, 3, 4, 5}), cudapfe::ShapeError);
+    EXPECT_THROW((void)enc(msk, IntMatrix{{1, 2, 3, 4}, {1, 2, 3, 4, 5}}), cudapfe::ShapeError);
 }
 
 TYPED_TEST(InnerProductTest, RejectsIncompatibleBatchCounts){
@@ -110,17 +110,17 @@ TYPED_TEST(InnerProductTest, RejectsIncompatibleBatchCounts){
     const auto decrypt = TypeParam::decryptor(msk, kRange);
     const auto keys = keygen(msk, IntMatrix{{1, 2}, {3, 4}});
 
-    EXPECT_THROW((void)decrypt(keys, enc(msk, IntMatrix{{1, 0}, {0, 1}, {1, 1}})), cufe::ShapeError);
-    EXPECT_THROW((void)decrypt(prepare(keys), enc(msk, IntMatrix{{1, 0}, {0, 1}, {1, 1}})), cufe::ShapeError);
+    EXPECT_THROW((void)decrypt(keys, enc(msk, IntMatrix{{1, 0}, {0, 1}, {1, 1}})), cudapfe::ShapeError);
+    EXPECT_THROW((void)decrypt(prepare(keys), enc(msk, IntMatrix{{1, 0}, {0, 1}, {1, 1}})), cudapfe::ShapeError);
     EXPECT_EQ(decrypt(keys, enc(msk, IntMatrix{{1, 0}, {0, 1}})), (Results{1, 4}));
     EXPECT_TRUE(decrypt(keygen(msk, IntMatrix{}), enc(msk, IntMatrix{})).empty());
 }
 
 TEST(MatrixSchemeSetupTest, RefusesMasterKeysThatDoNotFitOnTheDevice){
-    CUFE_REQUIRE_GPU();
+    CUDAPFE_REQUIRE_GPU();
     constexpr std::size_t n = 100000;
 
-    EXPECT_THROW((void)cufe::IPFE::BJK::setup<cufe::Gpu>(n), cufe::DeviceError);
-    EXPECT_THROW((void)cufe::IPFE::TAO::setup<cufe::Gpu>(n), cufe::DeviceError);
-    EXPECT_THROW((void)cufe::IPFE::KIM::setup<cufe::Gpu>(2 * n), cufe::DeviceError);
+    EXPECT_THROW((void)cudapfe::IPFE::BJK::setup<cudapfe::Gpu>(n), cudapfe::DeviceError);
+    EXPECT_THROW((void)cudapfe::IPFE::TAO::setup<cudapfe::Gpu>(n), cudapfe::DeviceError);
+    EXPECT_THROW((void)cudapfe::IPFE::KIM::setup<cudapfe::Gpu>(2 * n), cudapfe::DeviceError);
 }

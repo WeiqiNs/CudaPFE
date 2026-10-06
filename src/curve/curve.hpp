@@ -1,38 +1,38 @@
-#ifndef CUFE_CURVE_CURVE_HPP
-#define CUFE_CURVE_CURVE_HPP
+#ifndef CUDAPFE_CURVE_CURVE_HPP
+#define CUDAPFE_CURVE_CURVE_HPP
 
 #include <cstddef>
 #include <span>
 #include <string>
 #include <type_traits>
 #include <vector>
-#include <cufe/core.hpp>
-#include <cufe/errors.hpp>
+#include <cudapfe/core.hpp>
+#include <cudapfe/errors.hpp>
 #include "field/constants.hpp"
 #include "field/field.hpp"
 #include "field/tower.hpp"
 #include "support/hd.hpp"
 #include "support/words.hpp"
 
-namespace cufe::detail{
+namespace cudapfe::detail{
     template <class F>
     struct Affine{
         F x, y;
 
-        [[nodiscard]] CUFE_HD static Affine identity(){ return {F::zero(), F::zero()}; }
+        [[nodiscard]] CUDAPFE_HD static Affine identity(){ return {F::zero(), F::zero()}; }
 
-        [[nodiscard]] CUFE_HD bool is_identity() const{ return x.is_zero() && y.is_zero(); }
+        [[nodiscard]] CUDAPFE_HD bool is_identity() const{ return x.is_zero() && y.is_zero(); }
 
-        friend CUFE_HD bool operator==(const Affine& p, const Affine& q){ return p.x == q.x && p.y == q.y; }
+        friend CUDAPFE_HD bool operator==(const Affine& p, const Affine& q){ return p.x == q.x && p.y == q.y; }
     };
 
     template <class F>
     struct Jacobian{
         F x, y, z;
 
-        [[nodiscard]] CUFE_HD static Jacobian identity(){ return {F::zero(), F::zero(), F::zero()}; }
+        [[nodiscard]] CUDAPFE_HD static Jacobian identity(){ return {F::zero(), F::zero(), F::zero()}; }
 
-        [[nodiscard]] CUFE_HD bool is_identity() const{ return z.is_zero(); }
+        [[nodiscard]] CUDAPFE_HD bool is_identity() const{ return z.is_zero(); }
     };
 
     using G1Affine = Affine<Fp>;
@@ -51,12 +51,12 @@ namespace cufe::detail{
 
     template <>
     struct CurveParams<Fp>{
-        [[nodiscard]] CUFE_HD static Fp b(){
+        [[nodiscard]] CUDAPFE_HD static Fp b(){
             constexpr auto words = kCurveB;
             return Fp::from_montgomery(words);
         }
 
-        [[nodiscard]] CUFE_HD static G1Affine generator(){
+        [[nodiscard]] CUDAPFE_HD static G1Affine generator(){
             constexpr auto words = kG1Generator;
             return {Fp::from_montgomery(words[0]), Fp::from_montgomery(words[1])};
         }
@@ -64,26 +64,26 @@ namespace cufe::detail{
 
     template <>
     struct CurveParams<Fp2>{
-        [[nodiscard]] CUFE_HD static Fp2 b(){
+        [[nodiscard]] CUDAPFE_HD static Fp2 b(){
             constexpr auto words = kCurveB;
             const auto four = Fp::from_montgomery(words);
             return {four, four};
         }
 
-        [[nodiscard]] CUFE_HD static G2Affine generator(){
+        [[nodiscard]] CUDAPFE_HD static G2Affine generator(){
             constexpr auto words = kG2Generator;
             return {Fp2::from_montgomery(words[0]), Fp2::from_montgomery(words[1])};
         }
     };
 
     template <class F>
-    [[nodiscard]] CUFE_HD Jacobian<F> from_affine(const Affine<F>& p){
+    [[nodiscard]] CUDAPFE_HD Jacobian<F> from_affine(const Affine<F>& p){
         if (p.is_identity()) return Jacobian<F>::identity();
         return {p.x, p.y, F::one()};
     }
 
     template <class F>
-    [[nodiscard]] CUFE_HD Affine<F> to_affine(const Jacobian<F>& p){
+    [[nodiscard]] CUDAPFE_HD Affine<F> to_affine(const Jacobian<F>& p){
         if (p.is_identity()) return Affine<F>::identity();
         const auto z_inverse = p.z.inverse();
         const auto zz = z_inverse.square();
@@ -91,10 +91,10 @@ namespace cufe::detail{
     }
 
     template <class F>
-    [[nodiscard]] CUFE_HD Jacobian<F> neg(const Jacobian<F>& p){ return {p.x, -p.y, p.z}; }
+    [[nodiscard]] CUDAPFE_HD Jacobian<F> neg(const Jacobian<F>& p){ return {p.x, -p.y, p.z}; }
 
     template <class F>
-    [[nodiscard]] CUFE_HD Jacobian<F> dbl(const Jacobian<F>& p){
+    [[nodiscard]] CUDAPFE_HD Jacobian<F> dbl(const Jacobian<F>& p){
         const auto a = p.x.square();
         const auto b = p.y.square();
         const auto c = b.square();
@@ -109,7 +109,7 @@ namespace cufe::detail{
     }
 
     template <class F>
-    [[nodiscard]] CUFE_HD Jacobian<F> add(const Jacobian<F>& p, const Jacobian<F>& q){
+    [[nodiscard]] CUDAPFE_HD Jacobian<F> add(const Jacobian<F>& p, const Jacobian<F>& q){
         if (p.is_identity()) return q;
         if (q.is_identity()) return p;
         const auto z1z1 = p.z.square();
@@ -129,7 +129,7 @@ namespace cufe::detail{
     }
 
     template <class F>
-    [[nodiscard]] CUFE_HD Jacobian<F> add_mixed(const Jacobian<F>& p, const Affine<F>& q){
+    [[nodiscard]] CUDAPFE_HD Jacobian<F> add_mixed(const Jacobian<F>& p, const Affine<F>& q){
         if (q.is_identity()) return p;
         if (p.is_identity()) return from_affine(q);
         const auto z1z1 = p.z.square();
@@ -148,7 +148,7 @@ namespace cufe::detail{
     }
 
     template <class F>
-    [[nodiscard]] CUFE_HD bool equal(const Jacobian<F>& p, const Jacobian<F>& q){
+    [[nodiscard]] CUDAPFE_HD bool equal(const Jacobian<F>& p, const Jacobian<F>& q){
         if (p.is_identity() || q.is_identity()) return p.is_identity() && q.is_identity();
         const auto z1z1 = p.z.square();
         const auto z2z2 = q.z.square();
@@ -156,12 +156,12 @@ namespace cufe::detail{
     }
 
     template <class F>
-    [[nodiscard]] CUFE_HD bool on_curve(const Affine<F>& p){
+    [[nodiscard]] CUDAPFE_HD bool on_curve(const Affine<F>& p){
         return p.y.square() == p.x.square() * p.x + CurveParams<F>::b();
     }
 
     template <class F, std::size_t M>
-    [[nodiscard]] CUFE_HD Jacobian<F> mul(const Jacobian<F>& p, const Words<M>& scalar){
+    [[nodiscard]] CUDAPFE_HD Jacobian<F> mul(const Jacobian<F>& p, const Words<M>& scalar){
         auto result = Jacobian<F>::identity();
 #pragma unroll 1
         for (auto i = bit_length(scalar); i-- > 0;){
@@ -172,10 +172,10 @@ namespace cufe::detail{
     }
 
     template <class F>
-    [[nodiscard]] CUFE_HD Jacobian<F> mul(const Jacobian<F>& p, const Fr& k){ return mul(p, k.canonical()); }
+    [[nodiscard]] CUDAPFE_HD Jacobian<F> mul(const Jacobian<F>& p, const Fr& k){ return mul(p, k.canonical()); }
 
     template <class F>
-    [[nodiscard]] CUFE_HD bool in_subgroup(const Affine<F>& p){
+    [[nodiscard]] CUDAPFE_HD bool in_subgroup(const Affine<F>& p){
         constexpr auto order = kR;
         return mul(from_affine(p), order).is_identity();
     }

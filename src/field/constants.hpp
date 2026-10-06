@@ -1,10 +1,10 @@
-#ifndef CUFE_FIELD_CONSTANTS_HPP
-#define CUFE_FIELD_CONSTANTS_HPP
+#ifndef CUDAPFE_FIELD_CONSTANTS_HPP
+#define CUDAPFE_FIELD_CONSTANTS_HPP
 
 #include <array>
 #include "support/words.hpp"
 
-namespace cufe::detail{
+namespace cudapfe::detail{
     using Fp2Words = std::array<Words<6>, 2>;
 
     inline constexpr Words<6> kP{

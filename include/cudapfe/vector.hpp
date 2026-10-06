@@ -1,5 +1,5 @@
-#ifndef CUFE_VECTOR_HPP
-#define CUFE_VECTOR_HPP
+#ifndef CUDAPFE_VECTOR_HPP
+#define CUDAPFE_VECTOR_HPP
 
 #include <cstddef>
 #include <functional>
@@ -8,7 +8,7 @@
 #include <vector>
 #include "core.hpp"
 
-namespace cufe{
+namespace cudapfe{
     using Vector = std::vector<Zp>;
 
     namespace detail{

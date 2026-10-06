@@ -5,9 +5,9 @@
 #include <string_view>
 #include <type_traits>
 #include <gtest/gtest.h>
-#include <cufe/cufe.hpp>
+#include <cudapfe/cudapfe.hpp>
 
-using namespace cufe;
+using namespace cudapfe;
 
 namespace{
     constexpr std::string_view kOrder = "52435875175126190479447740508185965837690552500527637822603658699938581184513";

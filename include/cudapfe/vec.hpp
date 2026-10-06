@@ -1,5 +1,5 @@
-#ifndef CUFE_VEC_HPP
-#define CUFE_VEC_HPP
+#ifndef CUDAPFE_VEC_HPP
+#define CUDAPFE_VEC_HPP
 
 #include <concepts>
 #include <cstddef>
@@ -10,7 +10,7 @@
 #include "core.hpp"
 #include "engine.hpp"
 
-namespace cufe{
+namespace cudapfe{
     struct Shape{
         std::size_t rows;
         std::size_t cols;

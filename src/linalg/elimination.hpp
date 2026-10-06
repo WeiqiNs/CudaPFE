@@ -1,11 +1,11 @@
-#ifndef CUFE_LINALG_ELIMINATION_HPP
-#define CUFE_LINALG_ELIMINATION_HPP
+#ifndef CUDAPFE_LINALG_ELIMINATION_HPP
+#define CUDAPFE_LINALG_ELIMINATION_HPP
 
 #include <cstddef>
 #include "field/field.hpp"
 #include "support/hd.hpp"
 
-namespace cufe::detail{
+namespace cudapfe::detail{
     struct EliminationState{
         Fr determinant;
         Fr inverse_pivot;
@@ -16,7 +16,7 @@ namespace cufe::detail{
         Fr* entries;
         std::size_t size;
 
-        [[nodiscard]] CUFE_HD Fr& at(const std::size_t row, const std::size_t col) const{
+        [[nodiscard]] CUDAPFE_HD Fr& at(const std::size_t row, const std::size_t col) const{
             return entries[row * 2 * size + col];
         }
     };
@@ -25,7 +25,7 @@ namespace cufe::detail{
         const Fr* matrix;
         Workspace work;
 
-        CUFE_HD void operator()(const std::size_t t) const{
+        CUDAPFE_HD void operator()(const std::size_t t) const{
             const auto m = work.size;
             const auto row = t / (2 * m);
             const auto col = t % (2 * m);
@@ -40,7 +40,7 @@ namespace cufe::detail{
         EliminationState* state;
         std::size_t* pivots;
 
-        CUFE_HD void operator()(std::size_t) const{
+        CUDAPFE_HD void operator()(std::size_t) const{
             if (state->singular) return;
             const auto m = work.size;
             auto row = column;
@@ -71,7 +71,7 @@ namespace cufe::detail{
         std::size_t column;
         const EliminationState* state;
 
-        CUFE_HD void operator()(const std::size_t i) const{
+        CUDAPFE_HD void operator()(const std::size_t i) const{
             auto& entry = work.at(column, column + i);
             entry = entry * state->inverse_pivot;
         }
@@ -82,7 +82,7 @@ namespace cufe::detail{
         std::size_t column;
         Fr* factors;
 
-        CUFE_HD void operator()(const std::size_t row) const{ factors[row] = work.at(row, column); }
+        CUDAPFE_HD void operator()(const std::size_t row) const{ factors[row] = work.at(row, column); }
     };
 
     struct EliminateOp{
@@ -90,7 +90,7 @@ namespace cufe::detail{
         std::size_t column;
         const Fr* factors;
 
-        CUFE_HD void operator()(const std::size_t t) const{
+        CUDAPFE_HD void operator()(const std::size_t t) const{
             const auto width = work.size + 1;
             const auto row = t / width;
             if (row == column) return;
@@ -104,7 +104,7 @@ namespace cufe::detail{
         std::size_t size;
         std::size_t* columns;
 
-        CUFE_HD void operator()(std::size_t) const{
+        CUDAPFE_HD void operator()(std::size_t) const{
 #pragma unroll 1
             for (std::size_t j = 0; j < size; ++j) columns[j] = j;
 #pragma unroll 1
@@ -122,7 +122,7 @@ namespace cufe::detail{
         const std::size_t* columns;
         Fr* out;
 
-        CUFE_HD void operator()(const std::size_t t) const{
+        CUDAPFE_HD void operator()(const std::size_t t) const{
             const auto row = t / size;
             out[t] = work[row * 2 * size + size + columns[t % size]];
         }

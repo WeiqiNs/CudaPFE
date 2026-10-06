@@ -1,5 +1,5 @@
-#ifndef CUFE_VEC_STORAGE_HPP
-#define CUFE_VEC_STORAGE_HPP
+#ifndef CUDAPFE_VEC_STORAGE_HPP
+#define CUDAPFE_VEC_STORAGE_HPP
 
 #include <concepts>
 #include <cstddef>
@@ -9,9 +9,9 @@
 #include <type_traits>
 #include <utility>
 #include <vector>
-#include <cufe/core.hpp>
-#include <cufe/engine.hpp>
-#include <cufe/vec.hpp>
+#include <cudapfe/core.hpp>
+#include <cudapfe/engine.hpp>
+#include <cudapfe/vec.hpp>
 #include "curve/curve.hpp"
 #include "field/field.hpp"
 #include "field/tower.hpp"
@@ -20,7 +20,7 @@
 #include "support/for_each.cuh"
 #include "support/runtime.hpp"
 
-namespace cufe::detail{
+namespace cudapfe::detail{
     template <class T>
     struct DeviceElement;
 

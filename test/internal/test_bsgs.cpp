@@ -3,11 +3,11 @@
 #include <limits>
 #include <vector>
 #include <gtest/gtest.h>
-#include <cufe/dlog.hpp>
+#include <cudapfe/dlog.hpp>
 #include "dlog/bsgs.hpp"
 
-using namespace cufe;
-using namespace cufe::detail;
+using namespace cudapfe;
+using namespace cudapfe::detail;
 
 namespace{
     constexpr auto kMin = std::numeric_limits<std::int64_t>::min();

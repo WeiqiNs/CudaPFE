@@ -13,13 +13,13 @@
 #include <utility>
 #include <vector>
 #include <blst.h>
-#include <cufe/cufe.hpp>
+#include <cudapfe/cudapfe.hpp>
 #include "dlog/bsgs.hpp"
 #include "pairing/plan.hpp"
 #include "timing.hpp"
 
-using namespace cufe;
-using namespace cufe::bench;
+using namespace cudapfe;
+using namespace cudapfe::bench;
 
 namespace{
     struct Sizes{
@@ -223,8 +223,8 @@ namespace{
     }
 
     void print_header(const std::string_view mode){
-        std::cout << std::format("# LibCuFE benchmark ({})\n\n", mode) << machine_summary()
-            << std::format("- CUFE_HOST_MILLER_BELOW = {}, CUFE_HOST_FINAL_EXP_BELOW = {}\n", detail::kHostMillerBelow,
+        std::cout << std::format("# CudaPFE benchmark ({})\n\n", mode) << machine_summary()
+            << std::format("- CUDAPFE_HOST_MILLER_BELOW = {}, CUDAPFE_HOST_FINAL_EXP_BELOW = {}\n", detail::kHostMillerBelow,
                 detail::kHostFinalExpBelow)
             << timing_summary();
     }
@@ -445,16 +445,16 @@ int main(const int argc, char** argv){
         if (argument == "--quick") quick = true;
         else if (argument == "--placement-sweep") sweep = true;
         else {
-            std::cerr << "usage: cufe_bench [--quick] [--placement-sweep]\n";
+            std::cerr << "usage: cudapfe_bench [--quick] [--placement-sweep]\n";
             return 2;
         }
     }
     if (!gpu_available()){
-        std::cerr << "cufe_bench needs a CUDA device\n";
+        std::cerr << "cudapfe_bench needs a CUDA device\n";
         return 1;
     }
     std::cout << std::unitbuf;
-    seed(bytes_of("cufe_bench"));
+    seed(bytes_of("cudapfe_bench"));
     (void)Gt::generator();
 
     if (sweep){

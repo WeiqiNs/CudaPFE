@@ -1,5 +1,5 @@
-#ifndef CUFE_TEST_ORACLE_HPP
-#define CUFE_TEST_ORACLE_HPP
+#ifndef CUDAPFE_TEST_ORACLE_HPP
+#define CUDAPFE_TEST_ORACLE_HPP
 
 #include <array>
 #include <bit>
@@ -8,7 +8,7 @@
 #include <string>
 #include <vector>
 #include <gtest/gtest.h>
-#include <cufe/core.hpp>
+#include <cudapfe/core.hpp>
 #include <support/samples.hpp>
 #include "curve/curve.hpp"
 #include "curve/encoding.hpp"
@@ -19,7 +19,7 @@
 #include <blst.h>
 #undef limb_t
 
-namespace cufe::test{
+namespace cudapfe::test{
     template <class T>
     struct BlstType;
 

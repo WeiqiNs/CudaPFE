@@ -1,13 +1,13 @@
 #include <array>
 #include <bit>
-#include <cufe/core.hpp>
+#include <cudapfe/core.hpp>
 #include "curve/encoding.hpp"
 #include "field/constants.hpp"
 #include "field/field.hpp"
 #include "field/tower.hpp"
 #include "support/access.hpp"
 
-namespace cufe{
+namespace cudapfe{
     using detail::Access;
     using detail::Fp2;
     using detail::Fp6;

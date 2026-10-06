@@ -1,12 +1,12 @@
-#ifndef CUFE_SUPPORT_ACCESS_HPP
-#define CUFE_SUPPORT_ACCESS_HPP
+#ifndef CUDAPFE_SUPPORT_ACCESS_HPP
+#define CUDAPFE_SUPPORT_ACCESS_HPP
 
 #include <bit>
 #include <memory>
 #include <utility>
-#include <cufe/core.hpp>
+#include <cudapfe/core.hpp>
 
-namespace cufe::detail{
+namespace cudapfe::detail{
     struct Access{
         template <class Element, class T>
         [[nodiscard]] static Element element(const T& x){ return std::bit_cast<Element>(x.words_); }

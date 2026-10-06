@@ -1,5 +1,5 @@
-#ifndef CUFE_FE_QFE_SGP_HPP
-#define CUFE_FE_QFE_SGP_HPP
+#ifndef CUDAPFE_FE_QFE_SGP_HPP
+#define CUDAPFE_FE_QFE_SGP_HPP
 
 #include <cstddef>
 #include <cstdint>
@@ -8,7 +8,7 @@
 #include <vector>
 #include "qfe.hpp"
 
-namespace cufe::QFE::SGP{
+namespace cudapfe::QFE::SGP{
     template <Engine E>
     struct Msk{
         Vector s;

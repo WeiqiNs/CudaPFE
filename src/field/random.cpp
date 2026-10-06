@@ -7,10 +7,10 @@
 #include <optional>
 #include <random>
 #include <blst.h>
-#include <cufe/core.hpp>
+#include <cudapfe/core.hpp>
 #include "support/access.hpp"
 
-namespace cufe{
+namespace cudapfe{
     namespace{
         using Digest = std::array<std::uint8_t, 32>;
 

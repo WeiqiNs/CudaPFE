@@ -7,8 +7,8 @@
 #include <string>
 #include <utility>
 #include <vector>
-#include <cufe/core.hpp>
-#include <cufe/vec.hpp>
+#include <cudapfe/core.hpp>
+#include <cudapfe/vec.hpp>
 #include "curve/curve.hpp"
 #include "curve/generator_table.hpp"
 #include "field/field.hpp"
@@ -20,7 +20,7 @@
 #include "vec/reduction.hpp"
 #include "vec/storage.hpp"
 
-namespace cufe{
+namespace cudapfe{
     namespace{
         using detail::Buffer;
         using detail::data;
@@ -34,7 +34,7 @@ namespace cufe{
             const P* y;
             P* out;
 
-            CUFE_HD void operator()(const std::size_t i) const{
+            CUDAPFE_HD void operator()(const std::size_t i) const{
                 out[i] = detail::to_affine(detail::add_mixed(detail::from_affine(x[i]), y[i]));
             }
         };
@@ -44,7 +44,7 @@ namespace cufe{
             const P* x;
             P* out;
 
-            CUFE_HD void operator()(const std::size_t i) const{ out[i] = {x[i].x, -x[i].y}; }
+            CUDAPFE_HD void operator()(const std::size_t i) const{ out[i] = {x[i].x, -x[i].y}; }
         };
 
         template <class P>
@@ -53,7 +53,7 @@ namespace cufe{
             const detail::Fr* k;
             P* out;
 
-            CUFE_HD void operator()(const std::size_t i) const{
+            CUDAPFE_HD void operator()(const std::size_t i) const{
                 out[i] = detail::to_affine(detail::mul(detail::from_affine(x[i]), k[i]));
             }
         };
@@ -63,7 +63,7 @@ namespace cufe{
             const detail::Fp12* y;
             detail::Fp12* out;
 
-            CUFE_HD void operator()(const std::size_t i) const{ out[i] = x[i] * y[i]; }
+            CUDAPFE_HD void operator()(const std::size_t i) const{ out[i] = x[i] * y[i]; }
         };
 
         struct GtDivOp{
@@ -71,7 +71,7 @@ namespace cufe{
             const detail::Fp12* y;
             detail::Fp12* out;
 
-            CUFE_HD void operator()(const std::size_t i) const{ out[i] = x[i] * detail::conjugate(y[i]); }
+            CUDAPFE_HD void operator()(const std::size_t i) const{ out[i] = x[i] * detail::conjugate(y[i]); }
         };
 
         template <class F>
@@ -80,12 +80,12 @@ namespace cufe{
             const detail::Affine<F>* table;
             detail::Affine<F>* out;
 
-            CUFE_HD void operator()(const std::size_t i) const{
+            CUDAPFE_HD void operator()(const std::size_t i) const{
                 out[i] = detail::to_affine(detail::fixed_base_mul(table, scalars[i]));
             }
         };
 
-        CUFE_HD constexpr std::size_t segment_start(
+        CUDAPFE_HD constexpr std::size_t segment_start(
             const Spread spread, const std::size_t segment, const std::size_t length
         ){
             return spread == Spread::shared ? 0 : segment * length;
@@ -98,7 +98,7 @@ namespace cufe{
             MsmShape shape;
             detail::Jacobian<F>* out;
 
-            CUFE_HD void operator()(const std::size_t t) const{
+            CUDAPFE_HD void operator()(const std::size_t t) const{
                 const auto rows = shape.shape.rows;
                 const auto cols = shape.shape.cols;
                 const auto row = t % rows;
@@ -112,7 +112,7 @@ namespace cufe{
 
         struct JacobianSum{
             template <class F>
-            CUFE_HD detail::Jacobian<F> operator()(const detail::Jacobian<F>& p, const detail::Jacobian<F>& q) const{
+            CUDAPFE_HD detail::Jacobian<F> operator()(const detail::Jacobian<F>& p, const detail::Jacobian<F>& q) const{
                 return detail::add(p, q);
             }
         };
@@ -122,7 +122,7 @@ namespace cufe{
             const detail::Jacobian<F>* in;
             detail::Affine<F>* out;
 
-            CUFE_HD void operator()(const std::size_t i) const{ out[i] = detail::to_affine(in[i]); }
+            CUDAPFE_HD void operator()(const std::size_t i) const{ out[i] = detail::to_affine(in[i]); }
         };
 
         template <class P>
@@ -134,7 +134,7 @@ namespace cufe{
             std::size_t width;
             P* out;
 
-            CUFE_HD void operator()(const std::size_t t) const{
+            CUDAPFE_HD void operator()(const std::size_t t) const{
                 const auto segment = t / length;
                 out[segment * width + offset + t % length] = in[segment_start(spread, segment, length) + t % length];
             }

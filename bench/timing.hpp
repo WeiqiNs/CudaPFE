@@ -1,5 +1,5 @@
-#ifndef CUFE_BENCH_TIMING_HPP
-#define CUFE_BENCH_TIMING_HPP
+#ifndef CUDAPFE_BENCH_TIMING_HPP
+#define CUDAPFE_BENCH_TIMING_HPP
 
 #include <algorithm>
 #include <array>
@@ -10,7 +10,7 @@
 #include <thread>
 #include <cuda_runtime.h>
 
-namespace cufe::bench{
+namespace cudapfe::bench{
     inline constexpr int kRuns = 5;
     inline constexpr double kSingleRunMs = 10000;
 
@@ -49,7 +49,7 @@ namespace cufe::bench{
         cudaDeviceProp properties{};
         if (cudaGetDeviceProperties(&properties, 0) != cudaSuccess) throw std::runtime_error("cudaGetDeviceProperties");
         return std::format("- GPU: {}, {} SMs\n- CPU threads: {}\n- Build type: {}\n", properties.name,
-            properties.multiProcessorCount, cpu_threads(), CUFE_BENCH_BUILD_TYPE);
+            properties.multiProcessorCount, cpu_threads(), CUDAPFE_BENCH_BUILD_TYPE);
     }
 
     inline std::string timing_summary(){

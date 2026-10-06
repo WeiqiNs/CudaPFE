@@ -1,12 +1,12 @@
 #include <cstddef>
 #include <vector>
 #include <gtest/gtest.h>
-#include <cufe/pairing.hpp>
+#include <cudapfe/pairing.hpp>
 #include "pairing/plan.hpp"
 #include "vec/reduction.hpp"
 
-using namespace cufe;
-using namespace cufe::detail;
+using namespace cudapfe;
+using namespace cudapfe::detail;
 
 namespace{
     struct PairsPerItemCase{

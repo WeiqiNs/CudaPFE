@@ -1,9 +1,9 @@
 #include <cstddef>
 #include <string>
-#include <cufe/engine.hpp>
+#include <cudapfe/engine.hpp>
 #include "support/runtime.hpp"
 
-namespace cufe{
+namespace cudapfe{
     namespace detail{
         void check(const cudaError_t status, const std::string_view operation){
             if (status == cudaSuccess) return;

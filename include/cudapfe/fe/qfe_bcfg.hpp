@@ -1,5 +1,5 @@
-#ifndef CUFE_FE_QFE_BCFG_HPP
-#define CUFE_FE_QFE_BCFG_HPP
+#ifndef CUDAPFE_FE_QFE_BCFG_HPP
+#define CUDAPFE_FE_QFE_BCFG_HPP
 
 #include <cstddef>
 #include <cstdint>
@@ -8,7 +8,7 @@
 #include <vector>
 #include "qfe.hpp"
 
-namespace cufe::QFE::BCFG{
+namespace cudapfe::QFE::BCFG{
     template <Engine E>
     struct Msk{
         Zp w;

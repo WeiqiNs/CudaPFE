@@ -1,16 +1,16 @@
-#ifndef CUFE_PAIRING_PLAN_HPP
-#define CUFE_PAIRING_PLAN_HPP
+#ifndef CUDAPFE_PAIRING_PLAN_HPP
+#define CUDAPFE_PAIRING_PLAN_HPP
 
 #include <algorithm>
 #include <cstddef>
 #include <limits>
 #include <string>
-#include <cufe/errors.hpp>
-#include <cufe/pairing.hpp>
+#include <cudapfe/errors.hpp>
+#include <cudapfe/pairing.hpp>
 #include "support/hd.hpp"
 #include "vec/reduction.hpp"
 
-namespace cufe::detail{
+namespace cudapfe::detail{
     enum class Placement{ host, host_final_exp, device };
 
     struct Item{
@@ -20,10 +20,10 @@ namespace cufe::detail{
     };
 
     inline constexpr std::size_t kMaxPairsPerItem = 8;
-    inline constexpr std::size_t kHostMillerBelow = CUFE_HOST_MILLER_BELOW;
-    inline constexpr std::size_t kHostFinalExpBelow = CUFE_HOST_FINAL_EXP_BELOW;
+    inline constexpr std::size_t kHostMillerBelow = CUDAPFE_HOST_MILLER_BELOW;
+    inline constexpr std::size_t kHostFinalExpBelow = CUDAPFE_HOST_FINAL_EXP_BELOW;
 
-    [[nodiscard]] CUFE_HD constexpr std::size_t segment_offset(
+    [[nodiscard]] CUDAPFE_HD constexpr std::size_t segment_offset(
         const PairShape& shape, const Spread spread, const std::size_t segment
     ){
         return spread == Spread::shared ? 0 : segment * shape.length;
@@ -33,13 +33,13 @@ namespace cufe::detail{
         PairShape shape;
         std::size_t pairs_per_item;
 
-        [[nodiscard]] CUFE_HD constexpr std::size_t items_per_segment() const{
+        [[nodiscard]] CUDAPFE_HD constexpr std::size_t items_per_segment() const{
             return ceil_div(shape.length, pairs_per_item);
         }
 
-        [[nodiscard]] CUFE_HD constexpr std::size_t item_count() const{ return shape.segments * items_per_segment(); }
+        [[nodiscard]] CUDAPFE_HD constexpr std::size_t item_count() const{ return shape.segments * items_per_segment(); }
 
-        [[nodiscard]] CUFE_HD constexpr Item item(const std::size_t index) const{
+        [[nodiscard]] CUDAPFE_HD constexpr Item item(const std::size_t index) const{
             const auto per_segment = items_per_segment();
             const auto first = index % per_segment * pairs_per_item;
             const auto remaining = shape.length - first;

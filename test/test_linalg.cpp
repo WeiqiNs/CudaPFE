@@ -1,10 +1,10 @@
 #include <cstddef>
 #include <vector>
 #include <gtest/gtest.h>
-#include <cufe/cufe.hpp>
+#include <cudapfe/cudapfe.hpp>
 #include <support/engines.hpp>
 
-using namespace cufe;
+using namespace cudapfe;
 
 namespace{
     template <Engine E>

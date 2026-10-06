@@ -1,5 +1,5 @@
-#ifndef CUFE_DLOG_HPP
-#define CUFE_DLOG_HPP
+#ifndef CUDAPFE_DLOG_HPP
+#define CUDAPFE_DLOG_HPP
 
 #include <cstdint>
 #include <memory>
@@ -9,7 +9,7 @@
 #include "engine.hpp"
 #include "vec.hpp"
 
-namespace cufe{
+namespace cudapfe{
     struct Range{
         std::int64_t lo;
         std::int64_t hi;

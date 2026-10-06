@@ -6,10 +6,10 @@
 #include <string>
 #include <utility>
 #include <vector>
-#include <cufe/core.hpp>
-#include <cufe/linalg.hpp>
-#include <cufe/vec.hpp>
-#include <cufe/vector.hpp>
+#include <cudapfe/core.hpp>
+#include <cudapfe/linalg.hpp>
+#include <cudapfe/vec.hpp>
+#include <cudapfe/vector.hpp>
 #include "field/field.hpp"
 #include "linalg/elimination.hpp"
 #include "support/access.hpp"
@@ -17,7 +17,7 @@
 #include "support/hd.hpp"
 #include "vec/storage.hpp"
 
-namespace cufe{
+namespace cudapfe{
     namespace{
         using detail::Buffer;
         using detail::data;
@@ -29,7 +29,7 @@ namespace cufe{
             Fr diagonal;
             Fr* out;
 
-            CUFE_HD void operator()(const std::size_t t) const{
+            CUDAPFE_HD void operator()(const std::size_t t) const{
                 out[t] = t / cols == t % cols ? diagonal : Fr::zero();
             }
         };
@@ -41,7 +41,7 @@ namespace cufe{
             std::size_t cols;
             Fr* out;
 
-            CUFE_HD void operator()(const std::size_t t) const{
+            CUDAPFE_HD void operator()(const std::size_t t) const{
                 const auto row = t / cols;
                 const auto col = t % cols;
                 auto total = Fr::zero();
@@ -56,7 +56,7 @@ namespace cufe{
             Shape shape;
             Fr* out;
 
-            CUFE_HD void operator()(const std::size_t t) const{
+            CUDAPFE_HD void operator()(const std::size_t t) const{
                 out[t] = in[t % shape.rows * shape.cols + t / shape.rows];
             }
         };
@@ -66,7 +66,7 @@ namespace cufe{
             Fr k;
             Fr* out;
 
-            CUFE_HD void operator()(const std::size_t t) const{ out[t] = in[t] * k; }
+            CUDAPFE_HD void operator()(const std::size_t t) const{ out[t] = in[t] * k; }
         };
 
         struct EqualOp{
@@ -74,7 +74,7 @@ namespace cufe{
             const Fr* y;
             unsigned* differs;
 
-            CUFE_HD void operator()(const std::size_t t) const{
+            CUDAPFE_HD void operator()(const std::size_t t) const{
                 if (!(x[t] == y[t])) *differs = 1;
             }
         };

@@ -1,5 +1,5 @@
-#ifndef CUFE_PAIRING_HPP
-#define CUFE_PAIRING_HPP
+#ifndef CUDAPFE_PAIRING_HPP
+#define CUDAPFE_PAIRING_HPP
 
 #include <cstddef>
 #include <memory>
@@ -7,7 +7,7 @@
 #include "engine.hpp"
 #include "vec.hpp"
 
-namespace cufe{
+namespace cudapfe{
     struct PairShape{
         std::size_t segments;
         std::size_t length;

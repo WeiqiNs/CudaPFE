@@ -9,10 +9,10 @@
 #include <utility>
 #include <vector>
 #include <cub/device/device_segmented_sort.cuh>
-#include <cufe/core.hpp>
-#include <cufe/dlog.hpp>
-#include <cufe/pairing.hpp>
-#include <cufe/vec.hpp>
+#include <cudapfe/core.hpp>
+#include <cudapfe/dlog.hpp>
+#include <cudapfe/pairing.hpp>
+#include <cudapfe/vec.hpp>
 #include "dlog/bsgs.hpp"
 #include "field/field.hpp"
 #include "field/tower.hpp"
@@ -22,7 +22,7 @@
 #include "support/runtime.hpp"
 #include "vec/storage.hpp"
 
-namespace cufe{
+namespace cudapfe{
     namespace detail{
         struct BsgsEntry{
             Fp12 base;
@@ -65,18 +65,18 @@ namespace cufe{
             Word* found;
         };
 
-        CUFE_HD std::uint64_t fingerprint(const Fp12& x){ return x.c0.c0.c0.montgomery()[0]; }
+        CUDAPFE_HD std::uint64_t fingerprint(const Fp12& x){ return x.c0.c0.c0.montgomery()[0]; }
 
-        CUFE_HD Fp12 power(const Fp12& base, const std::uint64_t exponent){
+        CUDAPFE_HD Fp12 power(const Fp12& base, const std::uint64_t exponent){
             return detail::pow(base, detail::Words<1>{exponent});
         }
 
-        CUFE_HD Fp12 inverse_power(const Fp12& base, const std::int64_t exponent){
+        CUDAPFE_HD Fp12 inverse_power(const Fp12& base, const std::int64_t exponent){
             const auto magnitude = static_cast<std::uint64_t>(exponent);
             return exponent < 0 ? power(base, 0 - magnitude) : detail::conjugate(power(base, magnitude));
         }
 
-        CUFE_HD void store_min(Word* slot, const Word value){
+        CUDAPFE_HD void store_min(Word* slot, const Word value){
 #ifdef __CUDA_ARCH__
             atomicMin(slot, value);
 #else
@@ -84,7 +84,7 @@ namespace cufe{
 #endif
         }
 
-        CUFE_HD std::uint64_t lower_bound(const std::uint64_t* keys, std::uint64_t size, const std::uint64_t key){
+        CUDAPFE_HD std::uint64_t lower_bound(const std::uint64_t* keys, std::uint64_t size, const std::uint64_t key){
             std::uint64_t low = 0;
             while (size > 0){
                 const auto half = size / 2;
@@ -103,7 +103,7 @@ namespace cufe{
             Steps steps;
             BsgsEntry* out;
 
-            CUFE_HD void operator()(const std::size_t i) const{
+            CUDAPFE_HD void operator()(const std::size_t i) const{
                 const auto base = bases[i];
                 const auto giant = detail::conjugate(power(base, steps.baby));
                 out[i] = {base, inverse_power(base, steps.lo), giant, base == Fp12::one()};
@@ -116,7 +116,7 @@ namespace cufe{
             std::uint64_t* fingerprints;
             std::uint32_t* baby_steps;
 
-            CUFE_HD void operator()(const std::size_t i) const{
+            CUDAPFE_HD void operator()(const std::size_t i) const{
                 const auto ladder = plan.ladder(i);
                 const auto& base = entries[ladder.entry].base;
                 const auto offset = ladder.entry * plan.length;
@@ -140,7 +140,7 @@ namespace cufe{
             const Fp12* targets;
             Word* found;
 
-            CUFE_HD void operator()(const std::size_t index) const{
+            CUDAPFE_HD void operator()(const std::size_t index) const{
                 const auto ladder = plan.ladder(index);
                 const auto table = tables == Spread::shared ? 0 : ladder.entry;
                 const auto& entry = entries[table];

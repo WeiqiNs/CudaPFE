@@ -2,9 +2,9 @@
 #include <cstddef>
 #include <memory>
 #include <utility>
-#include <cufe/core.hpp>
-#include <cufe/pairing.hpp>
-#include <cufe/vec.hpp>
+#include <cudapfe/core.hpp>
+#include <cudapfe/pairing.hpp>
+#include <cudapfe/vec.hpp>
 #include "curve/curve.hpp"
 #include "field/tower.hpp"
 #include "pairing/miller.hpp"
@@ -15,7 +15,7 @@
 #include "vec/reduce.cuh"
 #include "vec/storage.hpp"
 
-namespace cufe{
+namespace cudapfe{
     namespace detail{
         template <Engine E>
         struct LineStorage{
@@ -35,7 +35,7 @@ namespace cufe{
             const detail::G2Affine* qs;
             detail::Line* lines;
 
-            CUFE_HD void operator()(const std::size_t i) const{
+            CUDAPFE_HD void operator()(const std::size_t i) const{
                 detail::prepare_lines(qs[i], lines + i * detail::kLineCount);
             }
         };
@@ -49,7 +49,7 @@ namespace cufe{
             const detail::Line* lines;
             Fp12* out;
 
-            CUFE_HD void operator()(const std::size_t i) const{
+            CUDAPFE_HD void operator()(const std::size_t i) const{
                 const auto item = plan.item(i);
                 const auto p = detail::segment_offset(plan.shape, plan.shape.p, item.segment) + item.first;
                 const auto q = detail::segment_offset(plan.shape, plan.shape.q, item.segment) + item.first;
@@ -63,14 +63,14 @@ namespace cufe{
         };
 
         struct Fp12Product{
-            CUFE_HD Fp12 operator()(const Fp12& x, const Fp12& y) const{ return x * y; }
+            CUDAPFE_HD Fp12 operator()(const Fp12& x, const Fp12& y) const{ return x * y; }
         };
 
         struct FinalExpOp{
             const Fp12* in;
             Fp12* out;
 
-            CUFE_HD void operator()(const std::size_t i) const{ out[i] = detail::final_exp(in[i]); }
+            CUDAPFE_HD void operator()(const std::size_t i) const{ out[i] = detail::final_exp(in[i]); }
         };
 
         template <Engine E>

@@ -1,5 +1,5 @@
-#ifndef CUFE_CURVE_ENCODING_HPP
-#define CUFE_CURVE_ENCODING_HPP
+#ifndef CUDAPFE_CURVE_ENCODING_HPP
+#define CUDAPFE_CURVE_ENCODING_HPP
 
 #include <algorithm>
 #include <concepts>
@@ -8,15 +8,15 @@
 #include <optional>
 #include <string>
 #include <string_view>
-#include <cufe/core.hpp>
-#include <cufe/errors.hpp>
+#include <cudapfe/core.hpp>
+#include <cudapfe/errors.hpp>
 #include "curve/curve.hpp"
 #include "field/constants.hpp"
 #include "field/field.hpp"
 #include "field/tower.hpp"
 #include "support/words.hpp"
 
-namespace cufe::detail{
+namespace cudapfe::detail{
     inline constexpr std::uint8_t kCompressedFlag = 0x80;
     inline constexpr std::uint8_t kInfinityFlag = 0x40;
     inline constexpr std::uint8_t kSignFlag = 0x20;

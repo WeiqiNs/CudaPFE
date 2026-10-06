@@ -1,5 +1,5 @@
-#ifndef CUFE_FE_QFE_HPP
-#define CUFE_FE_QFE_HPP
+#ifndef CUDAPFE_FE_QFE_HPP
+#define CUDAPFE_FE_QFE_HPP
 
 #include <cstddef>
 #include <format>
@@ -7,7 +7,7 @@
 #include <vector>
 #include "ipfe.hpp"
 
-namespace cufe::QFE{
+namespace cudapfe::QFE{
     using IPFE::IntMatrix;
     using IPFE::IntVec;
     using IPFE::to_vector;

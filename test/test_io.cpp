@@ -2,9 +2,9 @@
 #include <sstream>
 #include <string>
 #include <gtest/gtest.h>
-#include <cufe/cufe.hpp>
+#include <cudapfe/cudapfe.hpp>
 
-using namespace cufe;
+using namespace cudapfe;
 
 TEST(IoTest, HexIsTwoLowercaseDigitsPerByte){
     EXPECT_EQ(to_hex(Bytes{0x00, 0xab, 0x10, 0xff}), "00ab10ff");
