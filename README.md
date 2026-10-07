@@ -8,6 +8,25 @@ run on a CPU engine or a CUDA engine; both execute the same `__host__ __device__
 [blst](https://github.com/supranational/blst). CudaPFE makes no constant-time guarantees and is meant for research
 prototypes.
 
+## Core API
+
+`CudaPFE::core` (`<cudapfe/cudapfe.hpp>`) holds the scalar and group types `Zp`, `G1`, `G2` and `Gt` and their batch
+form `Vec<T, E>` on the `Cpu` or `Gpu` engine:
+
+```cpp
+#include <cudapfe/cudapfe.hpp>
+
+using namespace cudapfe;
+const auto x = Vec<Zp, Gpu>::upload(Vector{1, 2, 3, 4});
+const auto y = Vec<Zp, Gpu>::upload(Vector{5, 6, 7, 8});
+const auto ps = mul_generator<G1>(x);
+const auto qs = mul_generator<G2>(y);
+const auto products = pair_segments(ps, qs, PairShape{1, 4});
+const auto exponents = DlogTable<Gpu>(Gt::generator(), {0, 1000}).find(products);   // {70}
+const auto sum = msm(ps, Vec<Zp, Gpu>::upload(Vector{1, 1, 1, 1}), MsmShape{1, {4, 1}});
+const bool ok = pair(sum.to<Cpu>().download().front(), G2::generator()) == Gt::generator().pow(10);   // true
+```
+
 ## Functional encryption
 
 `CudaPFE::fe` is a header-only target in `include/cudapfe/fe/` with batch-first ports of the schemes in
