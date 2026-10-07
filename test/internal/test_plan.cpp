@@ -15,53 +15,24 @@ namespace{
         std::size_t expected;
     };
 
-    struct ReductionCase{
-        std::size_t width;
-        std::size_t levels;
-    };
 }
 
-TEST(PlanTest, ItemsCoverEveryPairOnceWithoutCrossingSegments){
-    for (const auto& shape : std::vector<PairShape>{{1, 1}, {1, 300}, {50, 7}, {3, 8}, {5, 17}}){
-        for (const std::size_t k : {std::size_t{1}, std::size_t{2}, std::size_t{8}, shape.length}){
-            const ItemPlan plan{shape, k};
+TEST(PlanTest, ChunksCoverEachSegmentOnce){
+    for (const auto& shape : std::vector<PairShape>{{1, 1}, {1, 300}, {50, 7}, {3, 8}, {5, 17}, {0, 7}}){
+        for (const std::size_t size : {std::size_t{1}, std::size_t{2}, std::size_t{4}, std::size_t{8}, shape.length}){
+            const Chunks chunks{shape.segments, shape.length, size};
             std::vector<int> visits(shape.segments * shape.length, 0);
-            for (std::size_t j = 0; j < plan.item_count(); ++j){
-                const auto item = plan.item(j);
-                ASSERT_EQ(item.segment, j / plan.items_per_segment()) << j;
-                ASSERT_GE(item.count, 1u) << j;
-                ASSERT_LE(item.count, k) << j;
-                ASSERT_LE(item.first + item.count, shape.length) << j;
-                for (std::size_t i = 0; i < item.count; ++i) ++visits[item.segment * shape.length + item.first + i];
+            for (std::size_t j = 0; j < chunks.count(); ++j){
+                const auto chunk = chunks.at(j);
+                ASSERT_LT(chunk.segment, shape.segments) << j;
+                ASSERT_GE(chunk.count, 1u) << j;
+                ASSERT_LE(chunk.count, size) << j;
+                ASSERT_LE(chunk.first + chunk.count, shape.length) << j;
+                for (std::size_t i = 0; i < chunk.count; ++i) ++visits[chunk.segment * shape.length + chunk.first + i];
             }
             EXPECT_EQ(visits, std::vector<int>(visits.size(), 1))
-                << shape.segments << "x" << shape.length << " k=" << k;
+                << shape.segments << "x" << shape.length << " size " << size;
         }
-    }
-}
-
-TEST(PlanTest, ReductionReachesOneProductPerSegment){
-    constexpr std::size_t segments = 3;
-    for (const auto& [width, expected_levels] : std::vector<ReductionCase>{{1, 0}, {2, 1}, {7, 2}, {300, 5}}){
-        Reduction level{segments, width};
-        std::size_t levels = 0;
-        while (level.width > 1){
-            std::vector<int> visits(segments * level.width, 0);
-            for (std::size_t g = 0; g < level.group_count(); ++g){
-                const auto group = level.group(g);
-                const auto segment = g / level.groups_per_segment();
-                ASSERT_GE(group.count, 1u) << g;
-                ASSERT_LE(group.count, kReduceFanIn) << g;
-                ASSERT_GE(group.first, segment * level.width) << g;
-                ASSERT_LE(group.first + group.count, (segment + 1) * level.width) << g;
-                for (std::size_t i = 0; i < group.count; ++i) ++visits[group.first + i];
-            }
-            EXPECT_EQ(visits, std::vector<int>(visits.size(), 1)) << "width " << level.width;
-            level = level.next();
-            ++levels;
-        }
-        EXPECT_EQ(levels, expected_levels) << "width " << width;
-        EXPECT_EQ(level.group_count(), segments) << "width " << width;
     }
 }
 

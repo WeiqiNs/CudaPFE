@@ -17,6 +17,10 @@ namespace cudapfe::detail{
 
     template <std::size_t N>
     using Words = std::array<Word, N>;
+
+    [[nodiscard]] CUDAPFE_HD constexpr std::size_t ceil_div(const std::size_t n, const std::size_t d){
+        return (n + d - 1) / d;
+    }
 }
 
 #endif

@@ -52,7 +52,7 @@ namespace cudapfe{
         using detail::Buffer;
         using detail::data;
         using detail::Fp12;
-        using detail::LadderPlan;
+        using detail::Chunks;
         using detail::Steps;
         using detail::Word;
 
@@ -111,15 +111,15 @@ namespace cudapfe{
         };
 
         struct BabyStepOp{
-            LadderPlan plan;
+            Chunks plan;
             const BsgsEntry* entries;
             std::uint64_t* fingerprints;
             std::uint32_t* baby_steps;
 
             CUDAPFE_HD void operator()(const std::size_t i) const{
-                const auto ladder = plan.ladder(i);
-                const auto& base = entries[ladder.entry].base;
-                const auto offset = ladder.entry * plan.length;
+                const auto ladder = plan.at(i);
+                const auto& base = entries[ladder.segment].base;
+                const auto offset = ladder.segment * plan.length;
                 auto value = power(base, ladder.first);
 #pragma unroll 1
                 for (auto j = ladder.first; j < ladder.first + ladder.count; ++j){
@@ -131,7 +131,7 @@ namespace cudapfe{
         };
 
         struct GiantStepOp{
-            LadderPlan plan;
+            Chunks plan;
             Steps steps;
             Spread tables;
             const BsgsEntry* entries;
@@ -141,16 +141,16 @@ namespace cudapfe{
             Word* found;
 
             CUDAPFE_HD void operator()(const std::size_t index) const{
-                const auto ladder = plan.ladder(index);
-                const auto table = tables == Spread::shared ? 0 : ladder.entry;
+                const auto ladder = plan.at(index);
+                const auto table = tables == Spread::shared ? 0 : ladder.segment;
                 const auto& entry = entries[table];
                 if (entry.trivial){
-                    if (ladder.first == 0 && targets[ladder.entry] == Fp12::one()) store_min(found + ladder.entry, 0);
+                    if (ladder.first == 0 && targets[ladder.segment] == Fp12::one()) store_min(found + ladder.segment, 0);
                     return;
                 }
                 const auto* keys = fingerprints + table * steps.baby;
                 const auto* values = baby_steps + table * steps.baby;
-                auto gamma = targets[ladder.entry] * entry.shift * power(entry.giant, ladder.first);
+                auto gamma = targets[ladder.segment] * entry.shift * power(entry.giant, ladder.first);
 #pragma unroll 1
                 for (auto i = ladder.first; i < ladder.first + ladder.count; ++i){
                     const auto key = fingerprint(gamma);
@@ -158,7 +158,7 @@ namespace cudapfe{
                     for (auto at = lower_bound(keys, steps.baby, key); at < steps.baby && keys[at] == key; ++at){
                         const auto k = i * steps.baby + values[at];
                         if (k <= steps.span && power(entry.base, values[at]) == gamma){
-                            store_min(found + ladder.entry, k);
+                            store_min(found + ladder.segment, k);
                             return;
                         }
                     }
@@ -220,7 +220,7 @@ namespace cudapfe{
             Buffer<std::uint64_t, E> fingerprints(count * steps.baby);
             Buffer<std::uint32_t, E> baby_steps(count * steps.baby);
             const BabyStepOp op{plan, entries.data(), fingerprints.data(), baby_steps.data()};
-            detail::for_each<E>(plan.ladder_count(), op);
+            detail::for_each<E>(plan.count(), op);
             BsgsTables<E> tables{steps, std::move(entries), std::move(fingerprints), std::move(baby_steps)};
             if (count != 0) sort_segments(tables, count);
             return tables;
@@ -230,7 +230,7 @@ namespace cudapfe{
         void giant_steps(const BsgsTables<E>& tables, const Targets& targets){
             const auto resident = resident_threads<E, GiantStepOp>();
             const auto plan = detail::plan_ladders(targets.count, tables.steps.giant, resident);
-            detail::for_each<E>(plan.ladder_count(), GiantStepOp{
+            detail::for_each<E>(plan.count(), GiantStepOp{
                 plan, tables.steps, targets.tables, tables.entries.data(), tables.fingerprints.data(),
                 tables.baby_steps.data(), targets.values, targets.found
             });

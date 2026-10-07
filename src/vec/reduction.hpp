@@ -7,31 +7,27 @@
 namespace cudapfe::detail{
     inline constexpr std::size_t kReduceFanIn = 4;
 
-    struct Group{
+    struct Chunk{
+        std::size_t segment;
         std::size_t first;
         std::size_t count;
     };
 
-    [[nodiscard]] CUDAPFE_HD constexpr std::size_t ceil_div(const std::size_t n, const std::size_t d){
-        return (n + d - 1) / d;
-    }
-
-    struct Reduction{
+    struct Chunks{
         std::size_t segments;
-        std::size_t width;
+        std::size_t length;
+        std::size_t size;
 
-        [[nodiscard]] CUDAPFE_HD constexpr std::size_t groups_per_segment() const{ return ceil_div(width, kReduceFanIn); }
+        [[nodiscard]] CUDAPFE_HD constexpr std::size_t per_segment() const{ return ceil_div(length, size); }
 
-        [[nodiscard]] CUDAPFE_HD constexpr std::size_t group_count() const{ return segments * groups_per_segment(); }
+        [[nodiscard]] CUDAPFE_HD constexpr std::size_t count() const{ return segments * per_segment(); }
 
-        [[nodiscard]] CUDAPFE_HD constexpr Group group(const std::size_t index) const{
-            const auto per_segment = groups_per_segment();
-            const auto offset = index % per_segment * kReduceFanIn;
-            const auto remaining = width - offset;
-            return {index / per_segment * width + offset, remaining < kReduceFanIn ? remaining : kReduceFanIn};
+        [[nodiscard]] CUDAPFE_HD constexpr Chunk at(const std::size_t index) const{
+            const auto per = per_segment();
+            const auto first = index % per * size;
+            const auto remaining = length - first;
+            return {index / per, first, remaining < size ? remaining : size};
         }
-
-        [[nodiscard]] constexpr Reduction next() const{ return {segments, groups_per_segment()}; }
     };
 }
 

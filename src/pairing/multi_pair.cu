@@ -13,6 +13,8 @@
 #include "support/for_each.cuh"
 #include "support/hd.hpp"
 #include "vec/reduce.cuh"
+#include "vec/reduction.hpp"
+#include "vec/spread.hpp"
 #include "vec/storage.hpp"
 
 namespace cudapfe{
@@ -43,16 +45,18 @@ namespace cudapfe{
         static_assert(detail::kMaxPairsPerItem <= detail::MaskedPairs::capacity);
 
         struct MillerItemOp{
-            detail::ItemPlan plan;
+            detail::Chunks items;
+            detail::Layout p_layout;
+            detail::Layout q_layout;
             const detail::G1Affine* ps;
             const detail::G2Affine* qs;
             const detail::Line* lines;
             Fp12* out;
 
             CUDAPFE_HD void operator()(const std::size_t i) const{
-                const auto item = plan.item(i);
-                const auto p = detail::segment_offset(plan.shape, plan.shape.p, item.segment) + item.first;
-                const auto q = detail::segment_offset(plan.shape, plan.shape.q, item.segment) + item.first;
+                const auto item = items.at(i);
+                const auto p = p_layout.offset(item.segment) + item.first;
+                const auto q = q_layout.offset(item.segment) + item.first;
                 const detail::PreparedPairs pairs{ps + p, qs + q, lines + q * detail::kLineCount, item.count};
 #ifdef __CUDA_ARCH__
                 out[i] = detail::miller(detail::MaskedPairs::gather(pairs));
@@ -88,11 +92,15 @@ namespace cudapfe{
 
         template <Engine E>
         Buffer<Fp12, E> miller_products(const Vec<G1, E>& ps, const LineStorage<E>& qs, const PairShape& shape){
-            const detail::ItemPlan plan{shape, pairs_per_item<E>(shape)};
-            Buffer<Fp12, E> items(plan.item_count());
-            const MillerItemOp op{plan, data(ps), data(qs.sources), qs.lines.data(), items.data()};
-            detail::for_each<E>(plan.item_count(), op);
-            return detail::reduce_segments<E, Fp12>(std::move(items), plan.products(), Fp12Product{});
+            const detail::Chunks items{shape.segments, shape.length, pairs_per_item<E>(shape)};
+            Buffer<Fp12, E> products(items.count());
+            const MillerItemOp op{
+                items, detail::layout(shape, shape.p), detail::layout(shape, shape.q), data(ps), data(qs.sources),
+                qs.lines.data(), products.data()
+            };
+            detail::for_each<E>(items.count(), op);
+            const detail::Chunks level{shape.segments, items.per_segment(), detail::kReduceFanIn};
+            return detail::reduce_segments<E, Fp12>(std::move(products), level, Fp12Product{});
         }
 
         template <Engine E>
@@ -128,8 +136,8 @@ namespace cudapfe{
         template <Engine E>
         void require_shapes(const Vec<G1, E>& ps, const std::size_t q_count, const PairShape& shape){
             detail::require_shape(shape);
-            detail::require_side(shape, shape.p, ps.size(), "G1");
-            detail::require_side(shape, shape.q, q_count, "G2");
+            detail::layout(shape, shape.p).require_size(ps.size(), "pair_segments' G1 side");
+            detail::layout(shape, shape.q).require_size(q_count, "pair_segments' G2 side");
         }
     }
 

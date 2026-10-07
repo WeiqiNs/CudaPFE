@@ -5,6 +5,7 @@
 #include <cstddef>
 #include <string>
 #include <cudapfe/engine.hpp>
+#include "support/hd.hpp"
 #include "support/runtime.hpp"
 
 namespace cudapfe::detail{
@@ -38,7 +39,7 @@ namespace cudapfe::detail{
         } else {
             if (count == 0) return;
             constexpr auto threads = threads_per_block<Op>();
-            const auto blocks = (count + threads - 1) / threads;
+            const auto blocks = ceil_div(count, threads);
             if (blocks > kMaxBlocks){
                 throw DeviceError("for_each over " + std::to_string(count) + " indices exceeds the grid");
             }

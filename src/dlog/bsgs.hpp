@@ -17,12 +17,6 @@ namespace cudapfe::detail{
         std::uint64_t giant;
     };
 
-    struct Ladder{
-        std::size_t entry;
-        std::uint64_t first;
-        std::uint64_t count;
-    };
-
     inline constexpr std::size_t kTableBudgetBytes = std::size_t{2} << 30;
     inline constexpr std::size_t kBabyStepBytes = 2 * (sizeof(std::uint64_t) + sizeof(std::uint32_t));
 
@@ -46,24 +40,7 @@ namespace cudapfe::detail{
         return static_cast<std::int64_t>(static_cast<std::uint64_t>(lo) + k);
     }
 
-    struct LadderPlan{
-        std::size_t entries;
-        std::uint64_t length;
-        std::uint64_t per_ladder;
-
-        [[nodiscard]] CUDAPFE_HD constexpr std::size_t ladders_per_entry() const{ return ceil_div(length, per_ladder); }
-
-        [[nodiscard]] CUDAPFE_HD constexpr std::size_t ladder_count() const{ return entries * ladders_per_entry(); }
-
-        [[nodiscard]] CUDAPFE_HD constexpr Ladder ladder(const std::size_t index) const{
-            const auto per_entry = ladders_per_entry();
-            const auto first = index % per_entry * per_ladder;
-            const auto remaining = length - first;
-            return {index / per_entry, first, remaining < per_ladder ? remaining : per_ladder};
-        }
-    };
-
-    [[nodiscard]] constexpr LadderPlan plan_ladders(
+    [[nodiscard]] constexpr Chunks plan_ladders(
         const std::size_t entries, const std::uint64_t length, const std::size_t resident_threads
     ){
         const auto steps = ceil_div(entries * length, std::max<std::size_t>(resident_threads, 1));

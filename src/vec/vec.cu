@@ -1,6 +1,5 @@
 #include <cstddef>
 #include <initializer_list>
-#include <limits>
 #include <memory>
 #include <span>
 #include <stdexcept>
@@ -18,6 +17,7 @@
 #include "support/hd.hpp"
 #include "vec/reduce.cuh"
 #include "vec/reduction.hpp"
+#include "vec/spread.hpp"
 #include "vec/storage.hpp"
 
 namespace cudapfe{
@@ -85,27 +85,22 @@ namespace cudapfe{
             }
         };
 
-        CUDAPFE_HD constexpr std::size_t segment_start(
-            const Spread spread, const std::size_t segment, const std::size_t length
-        ){
-            return spread == Spread::shared ? 0 : segment * length;
-        }
-
         template <class F>
         struct MsmTermOp{
             const detail::Affine<F>* bases;
             const detail::Fr* scalars;
-            MsmShape shape;
+            detail::Layout base_layout;
+            detail::Layout scalar_layout;
+            std::size_t cols;
             detail::Jacobian<F>* out;
 
             CUDAPFE_HD void operator()(const std::size_t t) const{
-                const auto rows = shape.shape.rows;
-                const auto cols = shape.shape.cols;
+                const auto rows = base_layout.length;
                 const auto row = t % rows;
                 const auto output = t / rows;
                 const auto segment = output / cols;
-                const auto base = segment_start(shape.bases, segment, rows) + row;
-                const auto scalar = segment_start(shape.scalars, segment, rows * cols) + row * cols + output % cols;
+                const auto base = base_layout.offset(segment) + row;
+                const auto scalar = scalar_layout.offset(segment) + row * cols + output % cols;
                 out[t] = detail::mul(detail::from_affine(bases[base]), scalars[scalar]);
             }
         };
@@ -128,34 +123,17 @@ namespace cudapfe{
         template <class P>
         struct PlaceOp{
             const P* in;
-            std::size_t length;
-            Spread spread;
+            detail::Layout layout;
             std::size_t offset;
             std::size_t width;
             P* out;
 
             CUDAPFE_HD void operator()(const std::size_t t) const{
-                const auto segment = t / length;
-                out[segment * width + offset + t % length] = in[segment_start(spread, segment, length) + t % length];
+                const auto segment = t / layout.length;
+                const auto k = t % layout.length;
+                out[segment * width + offset + k] = in[layout.offset(segment) + k];
             }
         };
-
-        std::size_t product(const std::size_t x, const std::size_t y, const char* operation){
-            if (x != 0 && y > std::numeric_limits<std::size_t>::max() / x){
-                throw ShapeError(std::string(operation) + " shape of " + std::to_string(x) + " x " + std::to_string(y)
-                    + " overflows");
-            }
-            return x * y;
-        }
-
-        void require_count(const std::size_t count, const Spread spread, const std::size_t segments,
-            const std::size_t length, const char* what){
-            const auto expected = spread == Spread::shared ? length : product(segments, length, what);
-            if (count != expected){
-                throw ShapeError(std::string(what) + " needs " + std::to_string(expected) + " for its shape, got "
-                    + std::to_string(count));
-            }
-        }
 
         template <class F>
         const detail::DeviceArray<detail::Affine<F>>& device_generator_table(){
@@ -239,15 +217,19 @@ namespace cudapfe{
     Vec<G, E> msm(const Vec<G, E>& bases, const Vec<Zp, E>& scalars, const MsmShape& shape){
         using F = FieldOf<G>;
         const auto [rows, cols] = shape.shape;
-        require_count(bases.size(), shape.bases, shape.segments, rows, "msm bases");
-        require_count(scalars.size(), shape.scalars, shape.segments, product(rows, cols, "msm"), "msm scalars");
-        const auto outputs = product(shape.segments, cols, "msm");
+        const detail::Layout base_layout{shape.segments, rows, shape.bases};
+        base_layout.require_size(bases.size(), "msm bases");
+        const detail::Layout scalar_layout{shape.segments, detail::checked_product(rows, cols, "msm"), shape.scalars};
+        scalar_layout.require_size(scalars.size(), "msm scalars");
+        const auto outputs = detail::checked_product(shape.segments, cols, "msm");
         if (rows == 0) return Vec<G, E>::upload(std::vector<G>(outputs));
 
-        Buffer<detail::Jacobian<F>, E> terms(product(outputs, rows, "msm"));
-        detail::for_each<E>(terms.size(), MsmTermOp<F>{data(bases), data(scalars), shape, terms.data()});
+        Buffer<detail::Jacobian<F>, E> terms(detail::checked_product(outputs, rows, "msm"));
+        detail::for_each<E>(terms.size(), MsmTermOp<F>{
+            data(bases), data(scalars), base_layout, scalar_layout, cols, terms.data()
+        });
         const auto sums = detail::reduce_segments<E, detail::Jacobian<F>>(
-            std::move(terms), detail::Reduction{outputs, rows}, JacobianSum{});
+            std::move(terms), {outputs, rows, detail::kReduceFanIn}, JacobianSum{});
         return generate<G, E>(outputs, [&](auto* out){ return ToAffineOp<F>{sums.data(), out}; });
     }
 
@@ -255,15 +237,14 @@ namespace cudapfe{
     Vec<G, E> concat(const std::size_t segments, const std::initializer_list<Segments<G, E>> parts){
         std::size_t width = 0;
         for (const auto& part : parts){
-            require_count(part.values.size(), part.spread, segments, part.length, "concat part");
+            detail::Layout{segments, part.length, part.spread}.require_size(part.values.size(), "concat part");
             width += part.length;
         }
-        Buffer<ElementOf<G>, E> out(product(segments, width, "concat"));
+        Buffer<ElementOf<G>, E> out(detail::checked_product(segments, width, "concat"));
         std::size_t offset = 0;
         for (const auto& part : parts){
             detail::for_each<E>(segments * part.length, PlaceOp<ElementOf<G>>{
-                .in = data(part.values), .length = part.length, .spread = part.spread, .offset = offset, .width = width,
-                .out = out.data()
+                .in = data(part.values), .layout = {segments, part.length, part.spread}, .offset = offset, .width = width, .out = out.data()
             });
             offset += part.length;
         }

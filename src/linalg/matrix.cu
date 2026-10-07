@@ -1,5 +1,4 @@
 #include <cstddef>
-#include <limits>
 #include <numeric>
 #include <optional>
 #include <span>
@@ -15,6 +14,7 @@
 #include "support/access.hpp"
 #include "support/for_each.cuh"
 #include "support/hd.hpp"
+#include "vec/spread.hpp"
 #include "vec/storage.hpp"
 
 namespace cudapfe{
@@ -87,11 +87,7 @@ namespace cudapfe{
 
         std::size_t entry_count(const Shape& shape){
             if (shape.rows == 0 || shape.cols == 0) throw ShapeError("a matrix needs at least one row and one column");
-            if (shape.cols > std::numeric_limits<std::size_t>::max() / shape.rows){
-                throw ShapeError("a matrix of " + std::to_string(shape.rows) + " x " + std::to_string(shape.cols)
-                    + " entries overflows");
-            }
-            return shape.rows * shape.cols;
+            return detail::checked_product(shape.rows, shape.cols, "matrix");
         }
 
         void require_square(const Shape& shape){
