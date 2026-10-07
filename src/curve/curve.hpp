@@ -1,6 +1,7 @@
 #ifndef CUDAPFE_CURVE_CURVE_HPP
 #define CUDAPFE_CURVE_CURVE_HPP
 
+#include <array>
 #include <cstddef>
 #include <type_traits>
 #include <cudapfe/core.hpp>
@@ -21,6 +22,8 @@ namespace cudapfe::detail{
 
         friend CUDAPFE_HD bool operator==(const Affine& p, const Affine& q){ return p.x == q.x && p.y == q.y; }
     };
+
+    inline constexpr std::size_t kMulWindowBits = 4;
 
     template <class F>
     struct Jacobian{
@@ -167,8 +170,40 @@ namespace cudapfe::detail{
         return result;
     }
 
+    template <class F, std::size_t K, std::size_t M, class Map>
+    [[nodiscard]] CUDAPFE_HD Jacobian<F> interleaved_mul(
+        const Jacobian<F>& p, const std::array<Words<M>, K>& digits, const Map& next
+    ){
+        constexpr std::size_t entries = (std::size_t{1} << kMulWindowBits) - 1;
+        std::array<std::array<Jacobian<F>, entries>, K> table;
+        table[0][0] = p;
+#pragma unroll 1
+        for (std::size_t j = 1; j < entries; ++j) table[0][j] = add(table[0][j - 1], p);
+        for (std::size_t k = 1; k < K; ++k){
+            for (std::size_t j = 0; j < entries; ++j) table[k][j] = next(table[k - 1][j]);
+        }
+        std::size_t length = 0;
+        for (const auto& scalar : digits){
+            const auto bits = bit_length(scalar);
+            if (bits > length) length = bits;
+        }
+        auto result = Jacobian<F>::identity();
+#pragma unroll 1
+        for (auto window = ceil_div(length, kMulWindowBits); window-- > 0;){
+            for (std::size_t i = 0; i < kMulWindowBits; ++i) result = dbl(result);
+            const auto bit = window * kMulWindowBits;
+            for (std::size_t k = 0; k < K; ++k){
+                const auto digit = (digits[k][bit / 64] >> (bit % 64)) & entries;
+                if (digit != 0) result = add(result, table[k][digit - 1]);
+            }
+        }
+        return result;
+    }
+
     template <class F>
-    [[nodiscard]] CUDAPFE_HD Jacobian<F> mul(const Jacobian<F>& p, const Fr& k){ return mul(p, k.canonical()); }
+    [[nodiscard]] CUDAPFE_HD Jacobian<F> mul(const Jacobian<F>& p, const Fr& k){
+        return interleaved_mul(p, std::array<Words<4>, 1>{k.canonical()}, [](const Jacobian<F>& q){ return q; });
+    }
 
     [[nodiscard]] CUDAPFE_HD G1Jacobian times_z_squared(const G1Jacobian& p){
         constexpr auto words = kCubeRootOfUnitySquared;

@@ -66,17 +66,32 @@ namespace{
         };
     }
 
+    std::vector<Fr> edge_and_random_scalars(){
+        const auto one = Fr::one();
+        const auto z = Fr::from_canonical({kZ});
+        const auto z2 = z * z;
+        const auto two64 = Fr::from_canonical({0, 1});
+        const auto two128 = Fr::from_canonical({0, 0, 1});
+        std::vector<Fr> scalars{
+            Fr::zero(), one, one + one, Fr::from_canonical({15}), Fr::from_canonical({16}), z - one, z, z + one, z2 - one,
+            z2, z2 + one, z2 * z, two64 - one, two128 - one, two128, Fr::from_canonical(sub_word(kR, 2)),
+            Fr::from_canonical(sub_word(kR, 1))
+        };
+        for (const auto& k : field_samples<FrParams>(kRandomPoints)) scalars.push_back(k);
+        return scalars;
+    }
+
     template <class F>
     std::vector<CurveInput<F>> curve_inputs(){
         const auto points = random_points<F>(kRandomPoints);
-        const auto scalars = field_samples<FrParams>(kRandomPoints + 1);
+        const auto scalars = edge_and_random_scalars();
         std::vector<CurveInput<F>> inputs;
         for (std::size_t i = 0; i < points.size(); ++i){
             const auto& p = points[i];
             const auto normalized = from_affine(to_affine(p));
             const auto& next = points[(i + 1) % points.size()];
             const auto q = i % 4 == 1 ? normalized : i % 4 == 2 ? neg(normalized) : next;
-            inputs.push_back({p, q, scalars[i + 1]});
+            inputs.push_back({p, q, scalars[i]});
         }
         return inputs;
     }
