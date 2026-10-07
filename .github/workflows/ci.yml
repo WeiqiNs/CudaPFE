@@ -52,8 +52,8 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v7
 
-      - name: Configure an optimized build without the tests
-        run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCUDAPFE_BUILD_TESTS=OFF
+      - name: Configure an optimized build with the benchmarks and without the tests
+        run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCUDAPFE_BUILD_TESTS=OFF -DCUDAPFE_BUILD_BENCH=ON
 
       - name: Build
         run: cmake --build build --parallel
