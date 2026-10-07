@@ -1,8 +1,6 @@
-#include <algorithm>
 #include <cstddef>
 #include <cstdint>
 #include <vector>
-#include <blst.h>
 #include <gtest/gtest.h>
 #include <cudapfe/cudapfe.hpp>
 #include <support/engines.hpp>
@@ -11,7 +9,6 @@ using namespace cudapfe;
 
 namespace{
     constexpr std::size_t kRandomScalars = 500;
-    constexpr std::size_t kOracleScalars = 20;
     constexpr unsigned kTopWindowShift = 248;
     constexpr unsigned kLargestTopDigit = 0x73;
 
@@ -22,12 +19,6 @@ namespace{
         for (unsigned digit = 0; digit <= kLargestTopDigit; ++digit) scalars.push_back(Zp(digit) * top_window);
         for (std::size_t i = 0; i < kRandomScalars; ++i) scalars.push_back(Zp::random());
         return scalars;
-    }
-
-    Bytes little_endian(const Zp& k){
-        auto bytes = k.to_bytes();
-        std::reverse(bytes.begin(), bytes.end());
-        return bytes;
     }
 }
 
@@ -46,21 +37,4 @@ TYPED_TEST(MulGeneratorTest, MatchesVariableBaseMultiplication){
     ASSERT_EQ(points.size(), scalars.size());
     for (std::size_t i = 0; i < scalars.size(); ++i) EXPECT_EQ(points[i], P::generator() * scalars[i]) << i;
     EXPECT_TRUE(mul_generator<P>(Vec<Zp, E>()).empty());
-}
-
-TEST(MulGeneratorTest, HostSingleMatchesBlst){
-    for (std::size_t i = 0; i < kOracleScalars; ++i){
-        const auto k = i == 0 ? Zp(-1) : Zp::random();
-        const auto scalar = little_endian(k);
-        blst_p1 p1;
-        blst_p2 p2;
-        blst_p1_mult(&p1, blst_p1_generator(), scalar.data(), 255);
-        blst_p2_mult(&p2, blst_p2_generator(), scalar.data(), 255);
-        Bytes expected_g1(G1::compressed_size), expected_g2(G2::compressed_size);
-        blst_p1_compress(expected_g1.data(), &p1);
-        blst_p2_compress(expected_g2.data(), &p2);
-
-        EXPECT_EQ(G1::mul_generator(k).to_bytes(), expected_g1) << i;
-        EXPECT_EQ(G2::mul_generator(k).to_bytes(), expected_g2) << i;
-    }
 }

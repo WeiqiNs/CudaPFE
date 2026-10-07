@@ -165,50 +165,33 @@ namespace{
             return;
         }
 
-        std::optional<decltype(S::setup(c.length))> state;
-        Measurement setup_ms;
+        std::optional<Timed<decltype(S::setup(c.length))>> setup;
         try{
-            setup_ms = measure([&]{
-                state.reset();
-                state.emplace(S::setup(c.length));
-            });
+            setup.emplace(timed([&]{ return S::setup(c.length); }));
         } catch (const DeviceError& error){
             skipped(error.what());
             return;
         }
+        const auto& state = setup->result;
 
-        std::optional<decltype(Family::key(*state, inputs))> sk;
-        const auto keygen_ms = measure([&]{
-            sk.reset();
-            sk.emplace(Family::key(*state, inputs));
-        });
-        std::optional<decltype(Family::encrypt(*state, inputs))> ct;
-        const auto enc_ms = measure([&]{
-            ct.reset();
-            ct.emplace(Family::encrypt(*state, inputs));
-        });
-
-        const auto decrypt = S::decryptor(*state, Range{0, kBound});
+        const auto sk = timed([&]{ return Family::key(state, inputs); });
+        const auto ct = timed([&]{ return Family::encrypt(state, inputs); });
+        const auto decrypt = S::decryptor(state, Range{0, kBound});
         const auto decryption_ms = [&](const auto& key){
-            Results found;
-            const auto ms = measure([&]{ found = decrypt(key, *ct); });
-            if (found != inputs.values){
+            const auto found = timed([&]{ return decrypt(key, ct.result); });
+            if (found.result != inputs.values){
                 throw std::runtime_error(std::format("{} on the {} engine decrypted wrongly", S::name, engine_name<E>()));
             }
-            return ms;
+            return found.time;
         };
-        const auto dec_ms = decryption_ms(*sk);
+        const auto dec_ms = decryption_ms(sk.result);
 
         std::string prepared_cells = "– | –";
-        if constexpr (requires{ prepare(*sk); }){
-            std::optional<decltype(prepare(*sk))> prepared;
-            const auto prepare_ms = measure([&]{
-                prepared.reset();
-                prepared.emplace(prepare(*sk));
-            });
-            prepared_cells = cell(prepare_ms) + " | " + cell(decryption_ms(*prepared));
+        if constexpr (requires{ prepare(sk.result); }){
+            const auto prepared = timed([&]{ return prepare(sk.result); });
+            prepared_cells = cell(prepared.time) + " | " + cell(decryption_ms(prepared.result));
         }
-        row(std::format("{} | {} | {} | {} | {}", cell(setup_ms), cell(keygen_ms), cell(enc_ms), cell(dec_ms),
+        row(std::format("{} | {} | {} | {} | {}", cell(setup->time), cell(sk.time), cell(ct.time), cell(dec_ms),
             prepared_cells));
     }
 

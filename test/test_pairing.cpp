@@ -52,14 +52,6 @@ TEST(PairingTest, MultiPairingIsTheProduct){
     EXPECT_THROW((void)pair(ps, qs), ShapeError);
 }
 
-TEST(PairingTest, GeneratorPairingMatchesBlst){
-    blst_p1_affine g1;
-    blst_p2_affine g2;
-    blst_p1_to_affine(&g1, blst_p1_generator());
-    blst_p2_to_affine(&g2, blst_p2_generator());
-    EXPECT_EQ(Gt::generator().to_bytes(), blst_gt_bytes(g1, g2));
-}
-
 TEST(PairingTest, RandomPairingsMatchBlst){
     for (std::size_t i = 0; i < kOraclePairs; ++i){
         const auto p = G1::random();

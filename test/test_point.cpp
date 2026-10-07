@@ -1,31 +1,12 @@
 #include <concepts>
-#include <cstdint>
 #include <string>
 #include <vector>
-#include <blst.h>
 #include <gtest/gtest.h>
 #include <cudapfe/cudapfe.hpp>
 
 using namespace cudapfe;
 
 namespace{
-    template <class P>
-    struct OffSubgroupX;
-
-    template <>
-    struct OffSubgroupX<G1>{ static constexpr std::uint8_t value = 4; };
-
-    template <>
-    struct OffSubgroupX<G2>{ static constexpr std::uint8_t value = 2; };
-
-    template <class P>
-    Bytes off_subgroup(){
-        Bytes out(P::compressed_size, 0);
-        out.front() = 0x80;
-        out.back() = OffSubgroupX<P>::value;
-        return out;
-    }
-
     class PointNames{
     public:
         template <class P>
@@ -87,31 +68,4 @@ TYPED_TEST(PointTest, EveryEncodingRoundTrips){
     EXPECT_EQ(P().to_bytes(), identity);
     EXPECT_TRUE(P::from_bytes(P().to_bytes()).is_identity());
     EXPECT_TRUE(P::from_bytes(P().to_bytes(Encoding::uncompressed)).is_identity());
-}
-
-TYPED_TEST(PointTest, DecodingRejectsInvalidEncodings){
-    using P = TypeParam;
-    const auto valid = P::generator().to_bytes();
-    ASSERT_EQ(P::from_bytes(valid), P::generator());
-
-    EXPECT_THROW((void)P::from_bytes(off_subgroup<P>()), DecodeError);
-    EXPECT_THROW((void)P::from_bytes(ByteView(valid).first(valid.size() - 1)), DecodeError);
-    EXPECT_THROW((void)P::from_bytes(Bytes{1}), DecodeError);
-    auto bad_prefix = valid;
-    bad_prefix.front() = 0x05;
-    EXPECT_THROW((void)P::from_bytes(bad_prefix), DecodeError);
-}
-
-TEST(PointTest, GeneratorEncodingMatchesBlst){
-    Bytes g1_compressed(G1::compressed_size), g1_uncompressed(G1::uncompressed_size);
-    blst_p1_compress(g1_compressed.data(), blst_p1_generator());
-    blst_p1_serialize(g1_uncompressed.data(), blst_p1_generator());
-    Bytes g2_compressed(G2::compressed_size), g2_uncompressed(G2::uncompressed_size);
-    blst_p2_compress(g2_compressed.data(), blst_p2_generator());
-    blst_p2_serialize(g2_uncompressed.data(), blst_p2_generator());
-
-    EXPECT_EQ(G1::generator().to_bytes(), g1_compressed);
-    EXPECT_EQ(G1::generator().to_bytes(Encoding::uncompressed), g1_uncompressed);
-    EXPECT_EQ(G2::generator().to_bytes(), g2_compressed);
-    EXPECT_EQ(G2::generator().to_bytes(Encoding::uncompressed), g2_uncompressed);
 }

@@ -73,7 +73,7 @@ cmake --build build --target cudapfe_bench cudapfe_bench_fe
 ./build/bench/cudapfe_bench_fe         # every FE scheme; --quick for small sizes
 ```
 
-`cudapfe_bench` prints Markdown tables for pairing throughput, multi-pairing latency, batch shapes, fixed-base
+`cudapfe_bench` prints Markdown tables for multi-pairing latency, batch shapes (single pairs among them), fixed-base
 multiplication, matrix inversion and product, and discrete-log tables. Each table compares the Gpu engine with whichever
 of the Cpu engine, blst on one core and blst on every hardware thread its columns name. The header names the GPU, its SM
 count, the CPU thread count, the build type and the placement thresholds compiled in. Every timing is the median of

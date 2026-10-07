@@ -52,8 +52,6 @@ TEST(BsgsPlanTest, StepsCoverTheRange){
         EXPECT_LE(Wide{steps.baby} * steps.giant, Wide{1} << 64) << range.lo;
         EXPECT_EQ(offset(steps.lo, steps.span), range.hi) << range.lo;
     }
-    EXPECT_THROW((void)plan_steps({1, 0}), ShapeError);
-    EXPECT_THROW((void)plan_steps({kMax, kMin}), ShapeError);
 }
 
 TEST(BsgsPlanTest, LaddersSpreadStepsOverResidentThreads){

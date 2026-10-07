@@ -12,7 +12,6 @@
 #include "curve/generator_table.hpp"
 #include "field/field.hpp"
 #include "field/tower.hpp"
-#include "support/device_array.hpp"
 #include "support/for_each.cuh"
 #include "support/hd.hpp"
 #include "vec/reduce.cuh"
@@ -135,16 +134,14 @@ namespace cudapfe{
             }
         };
 
-        template <class F>
-        const detail::DeviceArray<detail::Affine<F>>& device_generator_table(){
-            static const auto table = detail::to_engine<Gpu>(detail::generator_table<F>());
-            return table;
-        }
-
         template <Engine E, class F>
         const detail::Affine<F>* engine_generator_table(){
-            if constexpr (std::same_as<E, Cpu>) return detail::generator_table<F>().data();
-            else return device_generator_table<F>().data();
+            if constexpr (std::same_as<E, Cpu>){
+                return detail::generator_table<F>().data();
+            } else {
+                static const auto table = detail::to_engine<Gpu>(detail::generator_table<F>());
+                return table.data();
+            }
         }
     }
 
@@ -244,7 +241,8 @@ namespace cudapfe{
         std::size_t offset = 0;
         for (const auto& part : parts){
             detail::for_each<E>(segments * part.length, PlaceOp<ElementOf<G>>{
-                .in = data(part.values), .layout = {segments, part.length, part.spread}, .offset = offset, .width = width, .out = out.data()
+                .in = data(part.values), .layout = {segments, part.length, part.spread}, .offset = offset, .width = width,
+                .out = out.data()
             });
             offset += part.length;
         }

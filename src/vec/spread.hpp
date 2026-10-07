@@ -10,7 +10,9 @@
 #include "support/hd.hpp"
 
 namespace cudapfe::detail{
-    [[nodiscard]] inline std::size_t checked_product(const std::size_t x, const std::size_t y, const std::string_view what){
+    [[nodiscard]] inline std::size_t checked_product(
+        const std::size_t x, const std::size_t y, const std::string_view what
+    ){
         if (x != 0 && y > std::numeric_limits<std::size_t>::max() / x){
             throw ShapeError(std::string(what) + " shape of " + std::to_string(x) + " x " + std::to_string(y)
                 + " overflows");

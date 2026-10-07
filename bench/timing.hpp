@@ -5,9 +5,11 @@
 #include <array>
 #include <chrono>
 #include <format>
+#include <optional>
 #include <stdexcept>
 #include <string>
 #include <thread>
+#include <utility>
 #include <cuda_runtime.h>
 
 namespace cudapfe::bench{
@@ -17,6 +19,12 @@ namespace cudapfe::bench{
     struct Measurement{
         double ms;
         int runs;
+    };
+
+    template <class T>
+    struct Timed{
+        Measurement time;
+        T result;
     };
 
     inline unsigned cpu_threads(){
@@ -38,6 +46,16 @@ namespace cudapfe::bench{
         for (auto& time : times) time = elapsed_ms(f);
         std::ranges::sort(times);
         return {times[kRuns / 2], kRuns};
+    }
+
+    template <class Make>
+    auto timed(const Make& make){
+        std::optional<decltype(make())> result;
+        const auto time = measure([&]{
+            result.reset();
+            result.emplace(make());
+        });
+        return Timed<decltype(make())>{time, std::move(*result)};
     }
 
     inline std::string cell(const Measurement& m){

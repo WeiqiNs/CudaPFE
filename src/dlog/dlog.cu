@@ -11,7 +11,6 @@
 #include <cub/device/device_segmented_sort.cuh>
 #include <cudapfe/core.hpp>
 #include <cudapfe/dlog.hpp>
-#include <cudapfe/pairing.hpp>
 #include <cudapfe/vec.hpp>
 #include "dlog/bsgs.hpp"
 #include "field/field.hpp"
@@ -145,7 +144,9 @@ namespace cudapfe{
                 const auto table = tables == Spread::shared ? 0 : ladder.segment;
                 const auto& entry = entries[table];
                 if (entry.trivial){
-                    if (ladder.first == 0 && targets[ladder.segment] == Fp12::one()) store_min(found + ladder.segment, 0);
+                    if (ladder.first == 0 && targets[ladder.segment] == Fp12::one()){
+                        store_min(found + ladder.segment, 0);
+                    }
                     return;
                 }
                 const auto* keys = fingerprints + table * steps.baby;
