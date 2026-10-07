@@ -4,6 +4,7 @@
 #include <span>
 #include <stdexcept>
 #include <string>
+#include <type_traits>
 #include <utility>
 #include <vector>
 #include <cudapfe/core.hpp>
@@ -186,6 +187,12 @@ namespace cudapfe{
             throw std::out_of_range("Vec::at(" + std::to_string(index) + ") on a vector of " + std::to_string(size()));
         }
         return detail::from_element<T>(detail::element_at(storage_->buffer, index));
+    }
+
+    template <class T, Engine E>
+    Vec<T, std::conditional_t<std::same_as<E, Cpu>, Gpu, Cpu>> Vec<T, E>::transferred() const{
+        using To = std::conditional_t<std::same_as<E, Cpu>, Gpu, Cpu>;
+        return detail::vec<T, To>(detail::to_engine<To>(detail::to_host(storage_->buffer)));
     }
 
     template <class T, Engine E>

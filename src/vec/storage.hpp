@@ -76,12 +76,7 @@ namespace cudapfe::detail{
     }
 
     template <class T, Engine E>
-    [[nodiscard]] const Buffer<ElementOf<T>, E>& buffer(const Vec<T, E>& values){
-        return Access::storage(values).buffer;
-    }
-
-    template <class T, Engine E>
-    [[nodiscard]] const ElementOf<T>* data(const Vec<T, E>& values){ return buffer(values).data(); }
+    [[nodiscard]] const ElementOf<T>* data(const Vec<T, E>& values){ return Access::storage(values).buffer.data(); }
 
     template <class T, Engine E>
     [[nodiscard]] Vec<T, E> vec(Buffer<ElementOf<T>, E> buffer){

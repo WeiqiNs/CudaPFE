@@ -108,29 +108,19 @@ namespace cudapfe{
             return detail::generate<Gt, E>(products.size(), [&](auto* out){ return FinalExpOp{products.data(), out}; });
         }
 
-        template <class T>
-        Vec<T, Cpu> to_cpu(const Vec<T, Gpu>& values){
-            return detail::vec<T, Cpu>(detail::to_host(detail::buffer(values)));
-        }
-
-        template <class T>
-        Vec<T, Gpu> to_gpu(const Vec<T, Cpu>& values){
-            return detail::vec<T, Gpu>(detail::to_engine<Gpu>(detail::buffer(values)));
-        }
-
         template <Engine E>
         Vec<Gt, E> pair_prepared(const Vec<G1, E>& ps, const LineStorage<E>& qs, const PairShape& shape){
             const auto products = miller_products<E>(ps, qs, shape);
             if constexpr (std::same_as<E, Gpu>){
                 if (detail::place(shape) == detail::Placement::host_final_exp){
-                    return to_gpu(final_exps<Cpu>(detail::to_host(products)));
+                    return final_exps<Cpu>(detail::to_host(products)).template to<Gpu>();
                 }
             }
             return final_exps<E>(products);
         }
 
         Vec<Gt, Gpu> pair_on_host(const Vec<G1, Gpu>& ps, const LineStorage<Cpu>& qs, const PairShape& shape){
-            return to_gpu(pair_prepared(to_cpu(ps), qs, shape));
+            return pair_prepared(ps.to<Cpu>(), qs, shape).to<Gpu>();
         }
 
         template <Engine E>
@@ -162,7 +152,7 @@ namespace cudapfe{
         const auto& lines = Access::storage(qs);
         if constexpr (std::same_as<E, Gpu>){
             if (detail::place(shape) == detail::Placement::host){
-                return pair_on_host(ps, {to_cpu(lines.sources), detail::to_host(lines.lines)}, shape);
+                return pair_on_host(ps, {lines.sources.template to<Cpu>(), detail::to_host(lines.lines)}, shape);
             }
         }
         return pair_prepared(ps, lines, shape);
@@ -173,7 +163,7 @@ namespace cudapfe{
         require_shapes(ps, qs.size(), shape);
         if constexpr (std::same_as<E, Gpu>){
             if (detail::place(shape) == detail::Placement::host){
-                return pair_on_host(ps, prepare_storage(to_cpu(qs)), shape);
+                return pair_on_host(ps, prepare_storage(qs.template to<Cpu>()), shape);
             }
         }
         return pair_prepared(ps, prepare_storage(qs), shape);

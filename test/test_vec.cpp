@@ -68,6 +68,16 @@ TYPED_TEST(VecTest, UploadDownloadRoundTrips){
     EXPECT_TRUE(V().empty());
 }
 
+TYPED_TEST(VecTest, TransfersToEitherEngine){
+    CUDAPFE_REQUIRE_GPU();
+    using T = typename TypeParam::Value;
+    const auto values = values_with_neutral_ends<T>(kElementwiseValues);
+    const auto uploaded = Vec<T, typename TypeParam::Engine>::upload(values);
+
+    EXPECT_EQ(uploaded.template to<Cpu>().download(), values);
+    EXPECT_EQ(uploaded.template to<Gpu>().download(), values);
+}
+
 template <class C>
 class PointVecTest : public CaseTest<C>{};
 

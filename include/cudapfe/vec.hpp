@@ -6,6 +6,7 @@
 #include <initializer_list>
 #include <memory>
 #include <span>
+#include <type_traits>
 #include <vector>
 #include "core.hpp"
 #include "engine.hpp"
@@ -47,6 +48,12 @@ namespace cudapfe{
         [[nodiscard]] std::size_t size() const;
         [[nodiscard]] bool empty() const{ return size() == 0; }
 
+        template <Engine To>
+        [[nodiscard]] Vec<T, To> to() const{
+            if constexpr (std::same_as<To, E>) return *this;
+            else return transferred();
+        }
+
         friend Vec operator+(const Vec& x, const Vec& y) requires detail::GroupPoint<T>{ return x.plus(y); }
         friend Vec operator-(const Vec& x, const Vec& y) requires detail::GroupPoint<T>{ return x.plus(y.negated()); }
         friend Vec operator-(const Vec& x) requires detail::GroupPoint<T>{ return x.negated(); }
@@ -60,6 +67,8 @@ namespace cudapfe{
         friend struct detail::Access;
 
         explicit Vec(std::shared_ptr<const detail::Storage<T, E>> storage);
+
+        [[nodiscard]] Vec<T, std::conditional_t<std::same_as<E, Cpu>, Gpu, Cpu>> transferred() const;
 
         [[nodiscard]] Vec plus(const Vec& y) const requires detail::GroupPoint<T>;
         [[nodiscard]] Vec negated() const requires detail::GroupPoint<T>;
