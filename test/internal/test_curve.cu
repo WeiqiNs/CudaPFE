@@ -1,4 +1,5 @@
 #include <cstddef>
+#include <cstdint>
 #include <vector>
 #include <support/engines.hpp>
 #include <support/oracle.hpp>
@@ -123,13 +124,16 @@ TYPED_TEST(CurveTest, EdgeCasesFollowTheGroupLaw){
 
 TYPED_TEST(CurveTest, SubgroupCheckAgreesWithBlst){
     using F = TypeParam;
-    const auto outside = first_point_outside_subgroup<F>();
-    EXPECT_TRUE(on_curve(outside));
-    EXPECT_FALSE(in_subgroup(outside));
+    using O = CurveOracle<F>;
+    for (std::uint8_t x = 1; x <= 40; ++x){
+        Blst<Affine<F>> point;
+        if (O::uncompress(&point, small_x_compressed<F>(x).data()) != BLST_SUCCESS) continue;
+        EXPECT_EQ(in_subgroup(from_blst<Affine<F>>(point)), O::in_group(&point)) << int{x};
+    }
 
     const auto inside = to_affine(random_points<F>(1).back());
     const auto blst_inside = to_blst(inside);
-    EXPECT_TRUE(CurveOracle<F>::in_group(&blst_inside));
+    EXPECT_TRUE(O::in_group(&blst_inside));
     EXPECT_TRUE(on_curve(inside));
     EXPECT_TRUE(in_subgroup(inside));
     EXPECT_TRUE(in_subgroup(CurveParams<F>::generator()));

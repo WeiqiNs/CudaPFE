@@ -2,9 +2,9 @@
 #include <bit>
 #include <cudapfe/core.hpp>
 #include "curve/encoding.hpp"
-#include "field/constants.hpp"
 #include "field/field.hpp"
 #include "field/tower.hpp"
+#include "pairing/miller.hpp"
 #include "support/access.hpp"
 
 namespace cudapfe{
@@ -49,8 +49,7 @@ namespace cudapfe{
             f.*half.*slot = {detail::read_fp(rest.first(size)), detail::read_fp(rest.subspan(size, size))};
             rest = rest.subspan(2 * size);
         }
-        constexpr auto order = detail::kR;
-        if (detail::pow(f, order) != Fp12::one()) throw DecodeError("Gt encoding is not in the order-r subgroup");
+        if (!detail::in_subgroup(f)) throw DecodeError("Gt encoding is not in the order-r subgroup");
         return gt(f);
     }
 

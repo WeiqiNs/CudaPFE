@@ -170,10 +170,25 @@ namespace cudapfe::detail{
     template <class F>
     [[nodiscard]] CUDAPFE_HD Jacobian<F> mul(const Jacobian<F>& p, const Fr& k){ return mul(p, k.canonical()); }
 
-    template <class F>
-    [[nodiscard]] CUDAPFE_HD bool in_subgroup(const Affine<F>& p){
-        constexpr auto order = kR;
-        return mul(from_affine(p), order).is_identity();
+    [[nodiscard]] CUDAPFE_HD G1Jacobian times_z_squared(const G1Jacobian& p){
+        constexpr auto words = kCubeRootOfUnitySquared;
+        return {p.x * Fp::from_montgomery(words), -p.y, p.z};
+    }
+
+    [[nodiscard]] CUDAPFE_HD G2Jacobian psi(const G2Jacobian& p){
+        constexpr auto x = kPsiX;
+        constexpr auto y = kPsiY;
+        return {conjugate(p.x) * Fp2::from_montgomery(x), conjugate(p.y) * Fp2::from_montgomery(y), conjugate(p.z)};
+    }
+
+    [[nodiscard]] CUDAPFE_HD bool in_subgroup(const G1Affine& p){
+        const auto q = from_affine(p);
+        return equal(mul(mul(q, Words<1>{kZ}), Words<1>{kZ}), times_z_squared(q));
+    }
+
+    [[nodiscard]] CUDAPFE_HD bool in_subgroup(const G2Affine& p){
+        const auto q = from_affine(p);
+        return equal(psi(q), neg(mul(q, Words<1>{kZ})));
     }
 
     template <class F>

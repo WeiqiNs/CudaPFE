@@ -142,6 +142,12 @@ namespace cudapfe::detail{
 
     [[nodiscard]] CUDAPFE_HD Fp12 raise_to_z(const Fp12& a){ return cyclotomic_square(raise_to_z_div_by_2(a)); }
 
+    [[nodiscard]] CUDAPFE_HD bool in_subgroup(const Fp12& f){
+        if (f == Fp12{Fp6::zero(), Fp6::zero()}) return false;
+        const auto f2 = frobenius<2>(f);
+        return frobenius<2>(f2) * f == f2 && frobenius<1>(f) == raise_to_z(f);
+    }
+
     [[nodiscard]] CUDAPFE_HD Fp12 final_exp(const Fp12& f){
         auto ret = conjugate(f) * f.inverse();
         ret = ret * frobenius<2>(ret);

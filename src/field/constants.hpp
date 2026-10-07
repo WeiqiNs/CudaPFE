@@ -130,6 +130,10 @@ namespace cudapfe::detail{
             }
         },
     };
+
+    inline constexpr Words<6> kCubeRootOfUnitySquared = kFrobeniusFp6C1[1][0];
+    inline constexpr Fp2Words kPsiX{Words<6>{}, kFrobeniusFp6C2[0]};
+    inline constexpr Fp2Words kPsiY = kFrobeniusFp12[2];
 }
 
 #endif

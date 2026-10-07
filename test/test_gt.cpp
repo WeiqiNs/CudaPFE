@@ -103,6 +103,7 @@ TEST(GtTest, DecodingAgreesWithBlstInGroup){
         {"random element", Gt::random().to_bytes(), true},
         {"perturbed generator", outside, false},
         {"cyclotomic element of the wrong order", blst_bytes(easy_part(blst_from_bytes(outside))), false},
+        {"zero", Bytes(Gt::byte_size, 0), false},
     };
     for (const auto& candidate : candidates){
         const auto f = blst_from_bytes(candidate.bytes);
