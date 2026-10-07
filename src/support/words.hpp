@@ -62,6 +62,34 @@ namespace cudapfe::detail{
         return (words[index / 64] >> (index % 64)) & 1;
     }
 
+    template <std::size_t N, std::size_t D>
+    struct Division{
+        Words<N> quotient;
+        Words<D> remainder;
+    };
+
+    template <std::size_t N, std::size_t D>
+    constexpr CUDAPFE_HD Division<N, D> divide(const Words<N>& dividend, const Words<D>& divisor){
+        Division<N, D> result{};
+        auto& remainder = result.remainder;
+#pragma unroll 1
+        for (auto i = 64 * N; i-- > 0;){
+            const auto carry = remainder[D - 1] >> 63;
+            for (std::size_t j = D; j-- > 1;) remainder[j] = remainder[j] << 1 | remainder[j - 1] >> 63;
+            remainder[0] = remainder[0] << 1 | Word{bit(dividend, i)};
+            if (carry == 0 && less(remainder, divisor)) continue;
+            Word borrow = 0;
+            for (std::size_t j = 0; j < D; ++j){
+                const auto difference = remainder[j] - divisor[j];
+                const Word next_borrow = remainder[j] < divisor[j] || difference < borrow;
+                remainder[j] = difference - borrow;
+                borrow = next_borrow;
+            }
+            result.quotient[i / 64] |= Word{1} << (i % 64);
+        }
+        return result;
+    }
+
     template <std::size_t N>
     void append_big_endian(Bytes& out, const Words<N>& words){
         for (auto word = words.rbegin(); word != words.rend(); ++word){

@@ -20,6 +20,10 @@ namespace cudapfe::detail{
     inline constexpr Words<4> kFrInverseExponent = sub_word(kR, 2);
 
     inline constexpr Word kZ = 0xd201000000010000;
+    inline constexpr Words<2> kZSquared{0x0000000100000000, 0xac45a4010001a402};
+
+    static_assert(divide(kZSquared, Words<1>{kZ}).quotient == Words<2>{kZ});
+    static_assert(divide(kZSquared, Words<1>{kZ}).remainder == Words<1>{});
 
     inline constexpr Words<6> kFpMontgomeryOne{
         0x760900000002fffd, 0xebf4000bc40c0002, 0x5f48985753c758ba,

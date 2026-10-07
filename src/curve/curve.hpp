@@ -210,6 +210,13 @@ namespace cudapfe::detail{
         return {p.x * Fp::from_montgomery(words), -p.y, p.z};
     }
 
+    [[nodiscard]] CUDAPFE_HD G1Jacobian mul(const G1Jacobian& p, const Fr& k){
+        constexpr auto z_squared = kZSquared;
+        const auto [hi, lo] = divide(k.canonical(), z_squared);
+        const std::array<Words<2>, 2> digits{lo, Words<2>{hi[0], hi[1]}};
+        return interleaved_mul(p, digits, [](const G1Jacobian& q){ return times_z_squared(q); });
+    }
+
     [[nodiscard]] CUDAPFE_HD G2Jacobian psi(const G2Jacobian& p){
         constexpr auto x = kPsiX;
         constexpr auto y = kPsiY;
