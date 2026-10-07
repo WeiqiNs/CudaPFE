@@ -28,7 +28,7 @@ namespace cudapfe::detail{
             base = multiple;
         }
         std::vector<Affine<F>> table(multiples.size());
-        to_affine<F>(multiples, table);
+        to_affine(multiples.data(), multiples.size(), table.data());
         return table;
     }
 

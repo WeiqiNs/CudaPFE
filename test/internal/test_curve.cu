@@ -1,5 +1,4 @@
 #include <cstddef>
-#include <span>
 #include <vector>
 #include <support/engines.hpp>
 #include <support/oracle.hpp>
@@ -141,11 +140,12 @@ TYPED_TEST(CurveTest, BatchToAffineMatchesSingle){
     auto points = random_points<F>(kBatchPoints);
     for (std::size_t i = 0; i < points.size(); i += 7) points[i] = Jacobian<F>::identity();
     std::vector<Affine<F>> batch(points.size());
-    to_affine<F>(points, batch);
+    to_affine(points.data(), points.size(), batch.data());
     for (std::size_t i = 0; i < points.size(); ++i) EXPECT_EQ(batch[i], to_affine(points[i])) << i;
 
-    to_affine<F>({}, {});
-    EXPECT_THROW(to_affine<F>(points, std::span(batch).first(1)), ShapeError);
+    const std::vector identities(10, Jacobian<F>::identity());
+    to_affine(identities.data(), identities.size(), batch.data());
+    for (std::size_t i = 0; i < identities.size(); ++i) EXPECT_EQ(batch[i], Affine<F>::identity()) << i;
 }
 
 TYPED_TEST(CurveTest, DeviceMatchesHost){

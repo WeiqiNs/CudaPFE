@@ -106,7 +106,7 @@ namespace cudapfe::detail{
             jacobians.reserve(values.size());
             for (const auto& value : values) jacobians.push_back(Access::element<Jacobian<F>>(value));
             elements.resize(values.size());
-            to_affine<F>(jacobians, elements);
+            to_affine(jacobians.data(), jacobians.size(), elements.data());
         } else {
             for (const auto& value : values) elements.push_back(Access::element<ElementOf<T>>(value));
         }

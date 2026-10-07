@@ -94,6 +94,7 @@ TYPED_TEST(PointVecTest, ElementwiseOpsMatchHost){
         EXPECT_EQ(negations[i], -x[i]) << i;
         EXPECT_EQ(products[i], x[i] * k[i]) << i;
     }
+    EXPECT_EQ((vx - vx).download(), std::vector<P>(x.size()));
 }
 
 TYPED_TEST(PointVecTest, RejectsMismatchedSizes){

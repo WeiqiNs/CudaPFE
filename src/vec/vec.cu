@@ -27,14 +27,16 @@ namespace cudapfe{
         using detail::FieldOf;
         using detail::generate;
 
-        template <class P>
+        constexpr std::size_t kAffineChunk = 8;
+
+        template <class F>
         struct AddOp{
-            const P* x;
-            const P* y;
-            P* out;
+            const detail::Affine<F>* x;
+            const detail::Affine<F>* y;
+            detail::Jacobian<F>* out;
 
             CUDAPFE_HD void operator()(const std::size_t i) const{
-                out[i] = detail::to_affine(detail::add_mixed(detail::from_affine(x[i]), y[i]));
+                out[i] = detail::add_mixed(detail::from_affine(x[i]), y[i]);
             }
         };
 
@@ -46,15 +48,13 @@ namespace cudapfe{
             CUDAPFE_HD void operator()(const std::size_t i) const{ out[i] = {x[i].x, -x[i].y}; }
         };
 
-        template <class P>
+        template <class F>
         struct ScalarMulOp{
-            const P* x;
+            const detail::Affine<F>* x;
             const detail::Fr* k;
-            P* out;
+            detail::Jacobian<F>* out;
 
-            CUDAPFE_HD void operator()(const std::size_t i) const{
-                out[i] = detail::to_affine(detail::mul(detail::from_affine(x[i]), k[i]));
-            }
+            CUDAPFE_HD void operator()(const std::size_t i) const{ out[i] = detail::mul(detail::from_affine(x[i]), k[i]); }
         };
 
         struct GtMulOp{
@@ -77,11 +77,9 @@ namespace cudapfe{
         struct FixedBaseOp{
             const detail::Fr* scalars;
             const detail::Affine<F>* table;
-            detail::Affine<F>* out;
+            detail::Jacobian<F>* out;
 
-            CUDAPFE_HD void operator()(const std::size_t i) const{
-                out[i] = detail::to_affine(detail::fixed_base_mul(table, scalars[i]));
-            }
+            CUDAPFE_HD void operator()(const std::size_t i) const{ out[i] = detail::fixed_base_mul(table, scalars[i]); }
         };
 
         template <class F>
@@ -114,9 +112,14 @@ namespace cudapfe{
         template <class F>
         struct ToAffineOp{
             const detail::Jacobian<F>* in;
+            std::size_t count;
             detail::Affine<F>* out;
 
-            CUDAPFE_HD void operator()(const std::size_t i) const{ out[i] = detail::to_affine(in[i]); }
+            CUDAPFE_HD void operator()(const std::size_t i) const{
+                const auto first = i * kAffineChunk;
+                const auto size = count - first < kAffineChunk ? count - first : kAffineChunk;
+                detail::to_affine(in + first, size, out + first);
+            }
         };
 
         template <class P>
@@ -133,6 +136,22 @@ namespace cudapfe{
                 out[segment * width + offset + k] = in[layout.offset(segment) + k];
             }
         };
+
+        template <class G, Engine E>
+        Vec<G, E> normalized(const Buffer<detail::Jacobian<FieldOf<G>>, E>& points){
+            Buffer<ElementOf<G>, E> out(points.size());
+            const ToAffineOp<FieldOf<G>> op{points.data(), points.size(), out.data()};
+            detail::for_each<E>(detail::ceil_div(points.size(), kAffineChunk), op);
+            detail::finish<E>();
+            return detail::vec<G, E>(std::move(out));
+        }
+
+        template <class G, Engine E, class MakeOp>
+        Vec<G, E> generate_points(const std::size_t size, const MakeOp& make_op){
+            Buffer<detail::Jacobian<FieldOf<G>>, E> points(size);
+            detail::for_each<E>(size, make_op(points.data()));
+            return normalized<G, E>(points);
+        }
 
         template <Engine E, class F>
         const detail::Affine<F>* engine_generator_table(){
@@ -177,7 +196,7 @@ namespace cudapfe{
     template <class T, Engine E>
     Vec<T, E> Vec<T, E>::plus(const Vec& y) const requires detail::GroupPoint<T>{
         detail::require_same_size(*this, y, "point vector addition");
-        return generate<T, E>(size(), [&](auto* out){ return AddOp<ElementOf<T>>{data(*this), data(y), out}; });
+        return generate_points<T, E>(size(), [&](auto* out){ return AddOp<FieldOf<T>>{data(*this), data(y), out}; });
     }
 
     template <class T, Engine E>
@@ -188,7 +207,7 @@ namespace cudapfe{
     template <class T, Engine E>
     Vec<T, E> Vec<T, E>::scaled(const Vec<Zp, E>& k) const requires detail::GroupPoint<T>{
         detail::require_same_size(*this, k, "point vector scaling");
-        return generate<T, E>(size(), [&](auto* out){ return ScalarMulOp<ElementOf<T>>{data(*this), data(k), out}; });
+        return generate_points<T, E>(size(), [&](auto* out){ return ScalarMulOp<FieldOf<T>>{data(*this), data(k), out}; });
     }
 
     template <class T, Engine E>
@@ -207,7 +226,7 @@ namespace cudapfe{
     Vec<G, E> mul_generator(const Vec<Zp, E>& scalars){
         using F = FieldOf<G>;
         const auto* table = engine_generator_table<E, F>();
-        return generate<G, E>(scalars.size(), [&](auto* out){ return FixedBaseOp<F>{data(scalars), table, out}; });
+        return generate_points<G, E>(scalars.size(), [&](auto* out){ return FixedBaseOp<F>{data(scalars), table, out}; });
     }
 
     template <class G, Engine E> requires detail::GroupPoint<G>
@@ -227,7 +246,7 @@ namespace cudapfe{
         });
         const auto sums = detail::reduce_segments<E, detail::Jacobian<F>>(
             std::move(terms), {outputs, rows, detail::kReduceFanIn}, JacobianSum{});
-        return generate<G, E>(outputs, [&](auto* out){ return ToAffineOp<F>{sums.data(), out}; });
+        return normalized<G, E>(sums);
     }
 
     template <class G, Engine E> requires detail::GroupPoint<G>

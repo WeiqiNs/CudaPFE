@@ -2,12 +2,8 @@
 #define CUDAPFE_CURVE_CURVE_HPP
 
 #include <cstddef>
-#include <span>
-#include <string>
 #include <type_traits>
-#include <vector>
 #include <cudapfe/core.hpp>
-#include <cudapfe/errors.hpp>
 #include "field/constants.hpp"
 #include "field/field.hpp"
 #include "field/tower.hpp"
@@ -181,25 +177,22 @@ namespace cudapfe::detail{
     }
 
     template <class F>
-    void to_affine(const std::span<const Jacobian<F>> points, const std::span<Affine<F>> out){
-        if (points.size() != out.size()){
-            throw ShapeError("to_affine of " + std::to_string(points.size()) + " points cannot fill "
-                + std::to_string(out.size()));
-        }
-        std::vector<F> prefix(points.size());
+    CUDAPFE_HD void to_affine(const Jacobian<F>* points, const std::size_t count, Affine<F>* out){
         auto running = F::one();
-        for (std::size_t i = 0; i < points.size(); ++i){
-            prefix[i] = running;
+#pragma unroll 1
+        for (std::size_t i = 0; i < count; ++i){
+            out[i].x = running;
             if (!points[i].is_identity()) running = running * points[i].z;
         }
         auto inverse = running.inverse();
-        for (std::size_t i = points.size(); i-- > 0;){
+#pragma unroll 1
+        for (std::size_t i = count; i-- > 0;){
             const auto& p = points[i];
             if (p.is_identity()){
                 out[i] = Affine<F>::identity();
                 continue;
             }
-            const auto z_inverse = inverse * prefix[i];
+            const auto z_inverse = inverse * out[i].x;
             inverse = inverse * p.z;
             const auto zz = z_inverse.square();
             out[i] = {p.x * zz, p.y * zz * z_inverse};
