@@ -2,13 +2,13 @@
 #define CUDAPFE_FE_QFE_SGP_HPP
 
 #include <cstddef>
-#include <cstdint>
-#include <optional>
 #include <utility>
 #include <vector>
 #include "qfe.hpp"
 
 namespace cudapfe::QFE::SGP{
+    using IPFE::base, QFE::enc, QFE::keygen;
+
     template <Engine E>
     struct Msk{
         Vector s;
@@ -49,10 +49,6 @@ namespace cudapfe::QFE::SGP{
         return {{detail::lift<G1, E>(s), detail::lift<G2, E>(t)}, {std::move(s), std::move(t)}};
     }
 
-    [[nodiscard]] inline Gt base(){
-        return Gt::generator();
-    }
-
     template <Engine E>
     [[nodiscard]] Sk<E> keygen(const Msk<E>& msk, const std::vector<IntMatrix>& functions){
         Vector f;
@@ -63,11 +59,6 @@ namespace cudapfe::QFE::SGP{
             keys.push_back(detail::quadratic_form(msk.s, rows, msk.t));
         }
         return {Vec<Zp, E>::upload(f), detail::lift<G2, E>(keys)};
-    }
-
-    template <Engine E>
-    [[nodiscard]] Sk<E> keygen(const Msk<E>& msk, const IntMatrix& function){
-        return keygen(msk, std::vector<IntMatrix>{function});
     }
 
     template <Engine E>
@@ -101,12 +92,7 @@ namespace cudapfe::QFE::SGP{
     }
 
     template <Engine E>
-    [[nodiscard]] Ct<E> enc(const Pk<E>& pk, const IntVec& left, const IntVec& right){
-        return enc(pk, IntMatrix{left}, IntMatrix{right});
-    }
-
-    template <Engine E>
-    [[nodiscard]] std::vector<std::optional<std::int64_t>> dec(
+    [[nodiscard]] Results dec(
         const DlogTable<E>& table, const Sk<E>& sk, const Ct<E>& ct
     ){
         const auto batch = detail::broadcast({.keys = sk.key.size(), .ciphertexts = ct.gamma.size()});

@@ -3,14 +3,13 @@
 
 #include <cstddef>
 #include <cstdint>
-#include <optional>
 #include <random>
 #include <vector>
 #include <gtest/gtest.h>
 #include <support/engines.hpp>
 #include "schemes.hpp"
 
-using Results = std::vector<std::optional<std::int64_t>>;
+using cudapfe::IPFE::Results;
 
 inline constexpr cudapfe::Range kRange{-100, 100};
 

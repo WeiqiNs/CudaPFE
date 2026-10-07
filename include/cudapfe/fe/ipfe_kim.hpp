@@ -1,15 +1,14 @@
 #ifndef CUDAPFE_FE_IPFE_KIM_HPP
 #define CUDAPFE_FE_IPFE_KIM_HPP
 
-#include <concepts>
 #include <cstddef>
-#include <cstdint>
-#include <optional>
 #include <utility>
 #include <vector>
 #include "ipfe.hpp"
 
 namespace cudapfe::IPFE::KIM{
+    using IPFE::dec, IPFE::enc, IPFE::keygen;
+
     template <Engine E>
     struct Msk{
         Zp det;
@@ -59,11 +58,6 @@ namespace cudapfe::IPFE::KIM{
     }
 
     template <Engine E>
-    [[nodiscard]] Sk<E> keygen(const Msk<E>& msk, const IntVec& function){
-        return keygen(msk, IntMatrix{function});
-    }
-
-    template <Engine E>
     [[nodiscard]] Ct<E> enc(const Msk<E>& msk, const IntMatrix& messages){
         Vector r;
         std::vector<Vector> encoded;
@@ -76,20 +70,8 @@ namespace cudapfe::IPFE::KIM{
     }
 
     template <Engine E>
-    [[nodiscard]] Ct<E> enc(const Msk<E>& msk, const IntVec& message){
-        return enc(msk, IntMatrix{message});
-    }
-
-    template <Engine E>
     [[nodiscard]] PreparedSk<E> prepare(const Sk<E>& sk){
         return {sk.count, sk.r, cudapfe::prepare(sk.vec)};
-    }
-
-    template <Engine E, class Key> requires std::same_as<Key, Sk<E>> || std::same_as<Key, PreparedSk<E>>
-    [[nodiscard]] std::vector<std::optional<std::int64_t>> dec(const Key& sk, const Ct<E>& ct, const Range& range){
-        const auto batch = detail::broadcast({.keys = sk.count, .ciphertexts = ct.count});
-        const DlogTables<E> tables(detail::pair_entries(ct.r, sk.r, batch), range);
-        return tables.find(detail::pair_entries(ct.vec, sk.vec, batch));
     }
 }
 

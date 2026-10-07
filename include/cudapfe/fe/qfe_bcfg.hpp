@@ -2,13 +2,13 @@
 #define CUDAPFE_FE_QFE_BCFG_HPP
 
 #include <cstddef>
-#include <cstdint>
-#include <optional>
 #include <utility>
 #include <vector>
 #include "qfe.hpp"
 
 namespace cudapfe::QFE::BCFG{
+    using IPFE::base, QFE::enc, QFE::keygen;
+
     template <Engine E>
     struct Msk{
         Zp w;
@@ -57,10 +57,6 @@ namespace cudapfe::QFE::BCFG{
         };
     }
 
-    [[nodiscard]] inline Gt base(){
-        return Gt::generator();
-    }
-
     template <Engine E>
     [[nodiscard]] Sk<E> keygen(const Msk<E>& msk, const std::vector<IntMatrix>& functions){
         Vector f;
@@ -74,11 +70,6 @@ namespace cudapfe::QFE::BCFG{
             s2.push_back(gamma);
         }
         return {Vec<Zp, E>::upload(f), detail::lift<G1, E>(s1), detail::lift<G1, E>(s2)};
-    }
-
-    template <Engine E>
-    [[nodiscard]] Sk<E> keygen(const Msk<E>& msk, const IntMatrix& function){
-        return keygen(msk, std::vector<IntMatrix>{function});
     }
 
     template <Engine E>
@@ -113,12 +104,7 @@ namespace cudapfe::QFE::BCFG{
     }
 
     template <Engine E>
-    [[nodiscard]] Ct<E> enc(const Pk<E>& pk, const IntVec& left, const IntVec& right){
-        return enc(pk, IntMatrix{left}, IntMatrix{right});
-    }
-
-    template <Engine E>
-    [[nodiscard]] std::vector<std::optional<std::int64_t>> dec(
+    [[nodiscard]] Results dec(
         const DlogTable<E>& table, const Pk<E>& pk, const Sk<E>& sk, const Ct<E>& ct
     ){
         const auto batch = detail::broadcast({.keys = sk.s1.size(), .ciphertexts = ct.e.size()});

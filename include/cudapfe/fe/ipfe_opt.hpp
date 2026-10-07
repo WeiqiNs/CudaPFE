@@ -3,12 +3,12 @@
 
 #include <concepts>
 #include <cstddef>
-#include <cstdint>
-#include <optional>
 #include <vector>
 #include "ipfe.hpp"
 
 namespace cudapfe::IPFE::OPT{
+    using IPFE::base, IPFE::enc, IPFE::keygen;
+
     inline constexpr std::size_t b_size = 4;
 
     template <Engine E>
@@ -80,10 +80,6 @@ namespace cudapfe::IPFE::OPT{
         return {{random_vector(size), random_vector(size)}, b.to_rows(), b.inverse().transpose().to_rows()};
     }
 
-    [[nodiscard]] inline Gt base(){
-        return Gt::generator();
-    }
-
     template <Engine E>
     [[nodiscard]] Sk<E> keygen(const Msk<E>& msk, const IntMatrix& functions){
         Vector r;
@@ -95,11 +91,6 @@ namespace cudapfe::IPFE::OPT{
             IPFE::detail::append(vec, masked);
         }
         return {functions.size(), IPFE::detail::lift<G2, E>(r), IPFE::detail::lift<G2, E>(vec)};
-    }
-
-    template <Engine E>
-    [[nodiscard]] Sk<E> keygen(const Msk<E>& msk, const IntVec& function){
-        return keygen(msk, IntMatrix{function});
     }
 
     template <Engine E>
@@ -117,21 +108,15 @@ namespace cudapfe::IPFE::OPT{
     }
 
     template <Engine E>
-    [[nodiscard]] Ct<E> enc(const Msk<E>& msk, const IntVec& message){
-        return enc(msk, IntMatrix{message});
-    }
-
-    template <Engine E>
     [[nodiscard]] PreparedSk<E> prepare(const Sk<E>& sk){
         return {sk.count, cudapfe::prepare(detail::key_points(sk))};
     }
 
     template <Engine E, class Key> requires std::same_as<Key, Sk<E>> || std::same_as<Key, PreparedSk<E>>
-    [[nodiscard]] std::vector<std::optional<std::int64_t>> dec(
-        const DlogTable<E>& table, const Key& sk, const Ct<E>& ct
-    ){
-        const auto batch = IPFE::detail::broadcast({.keys = sk.count, .ciphertexts = ct.count});
-        return table.find(IPFE::detail::pair_entries(detail::ciphertext_points(ct), detail::key_points(sk), batch));
+    [[nodiscard]] Results dec(const DlogTable<E>& table, const Key& sk, const Ct<E>& ct){
+        return table.find(IPFE::detail::pair_entries(
+            detail::ciphertext_points(ct), detail::key_points(sk), {.keys = sk.count, .ciphertexts = ct.count}
+        ));
     }
 }
 

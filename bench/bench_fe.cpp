@@ -26,7 +26,7 @@ namespace{
     constexpr std::size_t kQuadraticLengthLimit = 100;
     constexpr std::size_t kJacobianG1Bytes = 3 * 48;
 
-    using Results = std::vector<std::optional<std::int64_t>>;
+    using IPFE::Results;
 
     struct Case{
         std::size_t length;

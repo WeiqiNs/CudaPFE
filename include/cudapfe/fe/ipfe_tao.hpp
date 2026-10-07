@@ -1,15 +1,14 @@
 #ifndef CUDAPFE_FE_IPFE_TAO_HPP
 #define CUDAPFE_FE_IPFE_TAO_HPP
 
-#include <concepts>
 #include <cstddef>
-#include <cstdint>
-#include <optional>
 #include <utility>
 #include <vector>
 #include "ipfe.hpp"
 
 namespace cudapfe::IPFE::TAO{
+    using IPFE::dec, IPFE::enc, IPFE::keygen;
+
     template <Engine E>
     struct Msk{
         Matrix<E> b;
@@ -55,11 +54,6 @@ namespace cudapfe::IPFE::TAO{
     }
 
     template <Engine E>
-    [[nodiscard]] Sk<E> keygen(const Msk<E>& msk, const IntVec& function){
-        return keygen(msk, IntMatrix{function});
-    }
-
-    template <Engine E>
     [[nodiscard]] Ct<E> enc(const Msk<E>& msk, const IntMatrix& messages){
         std::vector<Vector> encoded;
         for (const auto& message : messages){
@@ -70,21 +64,8 @@ namespace cudapfe::IPFE::TAO{
     }
 
     template <Engine E>
-    [[nodiscard]] Ct<E> enc(const Msk<E>& msk, const IntVec& message){
-        return enc(msk, IntMatrix{message});
-    }
-
-    template <Engine E>
     [[nodiscard]] PreparedSk<E> prepare(const Sk<E>& sk){
         return {sk.count, cudapfe::prepare(sk.vec)};
-    }
-
-    template <Engine E, class Key> requires std::same_as<Key, Sk<E>> || std::same_as<Key, PreparedSk<E>>
-    [[nodiscard]] std::vector<std::optional<std::int64_t>> dec(
-        const DlogTable<E>& table, const Key& sk, const Ct<E>& ct
-    ){
-        const auto batch = detail::broadcast({.keys = sk.count, .ciphertexts = ct.count});
-        return table.find(detail::pair_entries(ct.vec, sk.vec, batch));
     }
 }
 

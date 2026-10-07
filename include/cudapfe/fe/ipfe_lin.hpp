@@ -1,14 +1,13 @@
 #ifndef CUDAPFE_FE_IPFE_LIN_HPP
 #define CUDAPFE_FE_IPFE_LIN_HPP
 
-#include <concepts>
 #include <cstddef>
-#include <cstdint>
-#include <optional>
 #include <vector>
 #include "ipfe.hpp"
 
 namespace cudapfe::IPFE::LIN{
+    using IPFE::base, IPFE::dec, IPFE::enc, IPFE::keygen;
+
     template <Engine E>
     struct Msk{
         Vector s1;
@@ -38,10 +37,6 @@ namespace cudapfe::IPFE::LIN{
         return {random_vector(2 * size), random_vector(2 * size + 1)};
     }
 
-    [[nodiscard]] inline Gt base(){
-        return Gt::generator();
-    }
-
     template <Engine E>
     [[nodiscard]] Sk<E> keygen(const Msk<E>& msk, const IntMatrix& functions){
         Vector exponents;
@@ -52,11 +47,6 @@ namespace cudapfe::IPFE::LIN{
             detail::append(exponents, concat({Vector{-r}, msk.s2 * r + key}));
         }
         return {functions.size(), detail::lift<G2, E>(exponents)};
-    }
-
-    template <Engine E>
-    [[nodiscard]] Sk<E> keygen(const Msk<E>& msk, const IntVec& function){
-        return keygen(msk, IntMatrix{function});
     }
 
     template <Engine E>
@@ -72,21 +62,8 @@ namespace cudapfe::IPFE::LIN{
     }
 
     template <Engine E>
-    [[nodiscard]] Ct<E> enc(const Msk<E>& msk, const IntVec& message){
-        return enc(msk, IntMatrix{message});
-    }
-
-    template <Engine E>
     [[nodiscard]] PreparedSk<E> prepare(const Sk<E>& sk){
         return {sk.count, cudapfe::prepare(sk.vec)};
-    }
-
-    template <Engine E, class Key> requires std::same_as<Key, Sk<E>> || std::same_as<Key, PreparedSk<E>>
-    [[nodiscard]] std::vector<std::optional<std::int64_t>> dec(
-        const DlogTable<E>& table, const Key& sk, const Ct<E>& ct
-    ){
-        const auto batch = detail::broadcast({.keys = sk.count, .ciphertexts = ct.count});
-        return table.find(detail::pair_entries(ct.vec, sk.vec, batch));
     }
 }
 

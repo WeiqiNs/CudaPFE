@@ -10,6 +10,7 @@
 namespace cudapfe::QFE{
     using IPFE::IntMatrix;
     using IPFE::IntVec;
+    using IPFE::Results;
     using IPFE::to_vector;
 
     namespace detail{
@@ -85,6 +86,16 @@ namespace cudapfe::QFE{
         ){
             return msm(ciphertext_points, f, MsmShape{batch.segments, {size, size}, batch.ciphertexts, batch.keys});
         }
+    }
+
+    template <class Msk>
+    [[nodiscard]] auto keygen(const Msk& msk, const IntMatrix& function){
+        return keygen(msk, std::vector<IntMatrix>{function});
+    }
+
+    template <class Pk>
+    [[nodiscard]] auto enc(const Pk& pk, const IntVec& left, const IntVec& right){
+        return enc(pk, IntMatrix{left}, IntMatrix{right});
     }
 }
 
