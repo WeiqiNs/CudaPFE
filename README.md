@@ -54,7 +54,9 @@ cmake --install build
 ```
 
 Device code is compiled for `CMAKE_CUDA_ARCHITECTURES`, which defaults to `120`; pass `-DCMAKE_CUDA_ARCHITECTURES=<list>`
-for other GPUs. `-DCUDAPFE_PTXAS_VERBOSE=ON` prints the register and spill report of every kernel.
+for other GPUs. On a GPU the build has no kernel image for, `gpu_available()` returns false, the Gpu engine throws a
+`DeviceError` naming `-DCMAKE_CUDA_ARCHITECTURES`, and the GPU tests report as skipped.
+`-DCUDAPFE_PTXAS_VERBOSE=ON` prints the register and spill report of every kernel.
 
 A GPU is not required to build or test: without a CUDA device the GPU test cases report as skipped. Setting
 `CUDA_VISIBLE_DEVICES=` reproduces that on a machine that has one.

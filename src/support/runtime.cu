@@ -4,6 +4,10 @@
 #include "support/runtime.hpp"
 
 namespace cudapfe{
+    namespace{
+        __global__ void probe_kernel_image(){}
+    }
+
     namespace detail{
         void check(const cudaError_t status, const std::string_view operation){
             if (status == cudaSuccess) return;
@@ -17,6 +21,19 @@ namespace cudapfe{
             int device = 0;
             check(cudaGetDevice(&device), "cudaGetDevice");
             check(cudaDeviceGetAttribute(&sm_count_, cudaDevAttrMultiProcessorCount, device), "cudaDeviceGetAttribute");
+            cudaFuncAttributes attributes{};
+            if (cudaFuncGetAttributes(&attributes, probe_kernel_image) != cudaSuccess){
+                cudaGetLastError();
+                int major = 0;
+                int minor = 0;
+                check(cudaDeviceGetAttribute(&major, cudaDevAttrComputeCapabilityMajor, device),
+                    "cudaDeviceGetAttribute");
+                check(cudaDeviceGetAttribute(&minor, cudaDevAttrComputeCapabilityMinor, device),
+                    "cudaDeviceGetAttribute");
+                throw DeviceError("this build has no kernel image for compute capability " + std::to_string(major) + "."
+                    + std::to_string(minor) + "; reconfigure with -DCMAKE_CUDA_ARCHITECTURES=" + std::to_string(major)
+                    + std::to_string(minor));
+            }
             check(cudaStreamCreateWithFlags(&stream_, cudaStreamNonBlocking), "cudaStreamCreateWithFlags");
         }
 

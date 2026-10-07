@@ -7,7 +7,7 @@
 
 #define CUDAPFE_REQUIRE_GPU() \
     do{ \
-        if (!::cudapfe::gpu_available()) GTEST_SKIP() << "no CUDA device"; \
+        if (!::cudapfe::gpu_available()) GTEST_SKIP() << "no usable CUDA device"; \
     } while (false)
 
 using Engines = ::testing::Types<cudapfe::Cpu, cudapfe::Gpu>;
