@@ -200,11 +200,6 @@ namespace cudapfe::detail{
         return result;
     }
 
-    template <class F>
-    [[nodiscard]] CUDAPFE_HD Jacobian<F> mul(const Jacobian<F>& p, const Fr& k){
-        return interleaved_mul(p, std::array<Words<4>, 1>{k.canonical()}, [](const Jacobian<F>& q){ return q; });
-    }
-
     [[nodiscard]] CUDAPFE_HD G1Jacobian times_z_squared(const G1Jacobian& p){
         constexpr auto words = kCubeRootOfUnitySquared;
         return {p.x * Fp::from_montgomery(words), -p.y, p.z};
@@ -221,6 +216,15 @@ namespace cudapfe::detail{
         constexpr auto x = kPsiX;
         constexpr auto y = kPsiY;
         return {conjugate(p.x) * Fp2::from_montgomery(x), conjugate(p.y) * Fp2::from_montgomery(y), conjugate(p.z)};
+    }
+
+    [[nodiscard]] CUDAPFE_HD G2Jacobian mul(const G2Jacobian& p, const Fr& k){
+        constexpr Words<1> z{kZ};
+        const auto [q1, d0] = divide(k.canonical(), z);
+        const auto [q2, d1] = divide(q1, z);
+        const auto [d3, d2] = divide(q2, z);
+        const std::array<Words<1>, 4> digits{d0, d1, d2, Words<1>{d3[0]}};
+        return interleaved_mul(p, digits, [](const G2Jacobian& q){ return neg(psi(q)); });
     }
 
     [[nodiscard]] CUDAPFE_HD bool in_subgroup(const G1Affine& p){
