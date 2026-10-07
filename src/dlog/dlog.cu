@@ -68,7 +68,7 @@ namespace cudapfe{
         CUDAPFE_HD std::uint64_t fingerprint(const Fp12& x){ return x.c0.c0.c0.montgomery()[0]; }
 
         CUDAPFE_HD Fp12 power(const Fp12& base, const std::uint64_t exponent){
-            return detail::pow(base, detail::Words<1>{exponent});
+            return detail::cyclotomic_pow(base, detail::Words<1>{exponent});
         }
 
         CUDAPFE_HD Fp12 inverse_power(const Fp12& base, const std::int64_t exponent){

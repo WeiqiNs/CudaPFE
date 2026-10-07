@@ -75,7 +75,7 @@ namespace cudapfe{
     }
 
     Gt Gt::pow(const Zp& exponent) const{
-        return gt(detail::pow(fp12(*this), Access::element<detail::Fr>(exponent).canonical()));
+        return gt(detail::cyclotomic_pow(fp12(*this), Access::element<detail::Fr>(exponent).canonical()));
     }
 
     Gt Gt::times(const Gt& y) const{

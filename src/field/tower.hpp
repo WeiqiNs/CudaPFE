@@ -1,10 +1,12 @@
 #ifndef CUDAPFE_FIELD_TOWER_HPP
 #define CUDAPFE_FIELD_TOWER_HPP
 
+#include <cstddef>
 #include <type_traits>
 #include "field/constants.hpp"
 #include "field/field.hpp"
 #include "support/hd.hpp"
+#include "support/words.hpp"
 
 namespace cudapfe::detail{
     struct Fp2{
@@ -187,6 +189,19 @@ namespace cudapfe::detail{
                 thrice_plus_twice(t1.c1, x.c1.c2)
             }
         };
+    }
+
+    template <std::size_t M>
+    [[nodiscard]] CUDAPFE_HD Fp12 cyclotomic_pow(const Fp12& base, const Words<M>& exponent){
+        const auto length = bit_length(exponent);
+        if (length == 0) return Fp12::one();
+        auto result = base;
+#pragma unroll 1
+        for (auto i = length - 1; i-- > 0;){
+            result = cyclotomic_square(result);
+            if (bit(exponent, i)) result = result * base;
+        }
+        return result;
     }
 
     template <int N>

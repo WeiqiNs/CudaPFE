@@ -20,7 +20,6 @@ namespace cudapfe::detail{
     inline constexpr Words<4> kFrInverseExponent = sub_word(kR, 2);
 
     inline constexpr Word kZ = 0xd201000000010000;
-    inline constexpr bool kZIsNegative = true;
 
     inline constexpr Words<6> kFpMontgomeryOne{
         0x760900000002fffd, 0xebf4000bc40c0002, 0x5f48985753c758ba,

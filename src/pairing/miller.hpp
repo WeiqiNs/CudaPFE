@@ -133,21 +133,11 @@ namespace cudapfe::detail{
                 if (pairs.live(i)) f = mul_by_line(f, evaluate(pairs.line(i, step), pairs.px2(i)));
             }
         }
-        if constexpr (kZIsNegative) return conjugate(f);
-        else return f;
+        return conjugate(f);
     }
 
     [[nodiscard]] CUDAPFE_HD Fp12 raise_to_z_div_by_2(const Fp12& a){
-        constexpr Word exponent = kZ >> 1;
-        constexpr int top = std::bit_width(exponent) - 1;
-        auto result = a;
-#pragma unroll 1
-        for (int bit = top; bit-- > 0;){
-            result = cyclotomic_square(result);
-            if ((exponent >> bit) & 1) result = result * a;
-        }
-        if constexpr (kZIsNegative) return conjugate(result);
-        else return result;
+        return conjugate(cyclotomic_pow(a, Words<1>{kZ >> 1}));
     }
 
     [[nodiscard]] CUDAPFE_HD Fp12 raise_to_z(const Fp12& a){ return cyclotomic_square(raise_to_z_div_by_2(a)); }
