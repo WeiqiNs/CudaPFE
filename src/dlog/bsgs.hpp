@@ -44,7 +44,7 @@ namespace cudapfe::detail{
         const std::size_t entries, const std::uint64_t length, const std::size_t resident_threads
     ){
         const auto steps = ceil_div(entries * length, std::max<std::size_t>(resident_threads, 1));
-        return {entries, length, std::clamp<std::uint64_t>(steps, 1, std::max<std::uint64_t>(length, 1))};
+        return {entries, length, std::clamp<std::uint64_t>(steps, 1, length)};
     }
 
     [[nodiscard]] constexpr std::size_t entries_per_chunk(const std::uint64_t baby, const std::size_t budget_bytes){

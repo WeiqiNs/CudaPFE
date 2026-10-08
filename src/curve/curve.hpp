@@ -175,13 +175,10 @@ namespace cudapfe::detail{
         const Jacobian<F>& p, const std::array<Words<M>, K>& digits, const Map& next
     ){
         constexpr std::size_t entries = (std::size_t{1} << kMulWindowBits) - 1;
-        std::array<std::array<Jacobian<F>, entries>, K> table;
-        table[0][0] = p;
+        std::array<Jacobian<F>, entries> table;
+        table[0] = p;
 #pragma unroll 1
-        for (std::size_t j = 1; j < entries; ++j) table[0][j] = add(table[0][j - 1], p);
-        for (std::size_t k = 1; k < K; ++k){
-            for (std::size_t j = 0; j < entries; ++j) table[k][j] = next(table[k - 1][j]);
-        }
+        for (std::size_t j = 1; j < entries; ++j) table[j] = add(table[j - 1], p);
         std::size_t length = 0;
         for (const auto& scalar : digits){
             const auto bits = bit_length(scalar);
@@ -192,10 +189,13 @@ namespace cudapfe::detail{
         for (auto window = ceil_div(length, kMulWindowBits); window-- > 0;){
             for (std::size_t i = 0; i < kMulWindowBits; ++i) result = dbl(result);
             const auto bit = window * kMulWindowBits;
-            for (std::size_t k = 0; k < K; ++k){
+            auto sum = Jacobian<F>::identity();
+            for (std::size_t k = K; k-- > 0;){
+                if (!sum.is_identity()) sum = next(sum);
                 const auto digit = (digits[k][bit / 64] >> (bit % 64)) & entries;
-                if (digit != 0) result = add(result, table[k][digit - 1]);
+                if (digit != 0) sum = add(sum, table[digit - 1]);
             }
+            result = add(result, sum);
         }
         return result;
     }

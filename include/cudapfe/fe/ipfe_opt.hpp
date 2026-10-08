@@ -1,7 +1,6 @@
 #ifndef CUDAPFE_FE_IPFE_OPT_HPP
 #define CUDAPFE_FE_IPFE_OPT_HPP
 
-#include <concepts>
 #include <cstddef>
 #include <vector>
 #include "ipfe.hpp"
@@ -112,7 +111,7 @@ namespace cudapfe::IPFE::OPT{
         return {sk.count, cudapfe::prepare(detail::key_points(sk))};
     }
 
-    template <Engine E, class Key> requires std::same_as<Key, Sk<E>> || std::same_as<Key, PreparedSk<E>>
+    template <Engine E, class Key>
     [[nodiscard]] Results dec(const DlogTable<E>& table, const Key& sk, const Ct<E>& ct){
         return table.find(IPFE::detail::pair_entries(
             detail::ciphertext_points(ct), detail::key_points(sk), {.keys = sk.count, .ciphertexts = ct.count}

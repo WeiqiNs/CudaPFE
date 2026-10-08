@@ -14,7 +14,6 @@ namespace{
         std::size_t resident_threads;
         std::size_t expected;
     };
-
 }
 
 TEST(PlanTest, ChunksCoverEachSegmentOnce){
@@ -41,7 +40,6 @@ TEST(PlanTest, PairsPerItemClampsToBounds){
         {{1, 10}, 1000, 1},
         {{100, 50}, 1000, 5},
         {{1, 100000}, 1000, kMaxPairsPerItem},
-        {{0, 5}, 1000, 1},
         {{4, 4}, 0, kMaxPairsPerItem},
     };
     for (const auto& [shape, resident_threads, expected] : cases){

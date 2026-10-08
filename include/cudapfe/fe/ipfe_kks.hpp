@@ -3,7 +3,6 @@
 
 #include <cstddef>
 #include <utility>
-#include <vector>
 #include "ipfe.hpp"
 
 namespace cudapfe::IPFE::KKS{

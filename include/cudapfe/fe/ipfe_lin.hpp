@@ -2,7 +2,6 @@
 #define CUDAPFE_FE_IPFE_LIN_HPP
 
 #include <cstddef>
-#include <vector>
 #include "ipfe.hpp"
 
 namespace cudapfe::IPFE::LIN{

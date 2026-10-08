@@ -6,7 +6,6 @@
 #include <initializer_list>
 #include <memory>
 #include <span>
-#include <type_traits>
 #include <vector>
 #include "core.hpp"
 #include "engine.hpp"
@@ -68,7 +67,7 @@ namespace cudapfe{
 
         explicit Vec(std::shared_ptr<const detail::Storage<T, E>> storage);
 
-        [[nodiscard]] Vec<T, std::conditional_t<std::same_as<E, Cpu>, Gpu, Cpu>> transferred() const;
+        [[nodiscard]] Vec<T, detail::OtherEngine<E>> transferred() const;
 
         [[nodiscard]] Vec plus(const Vec& y) const requires detail::GroupPoint<T>;
         [[nodiscard]] Vec negated() const requires detail::GroupPoint<T>;

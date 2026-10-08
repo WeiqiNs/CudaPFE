@@ -104,9 +104,7 @@ namespace cudapfe::QFE::BCFG{
     }
 
     template <Engine E>
-    [[nodiscard]] Results dec(
-        const DlogTable<E>& table, const Pk<E>& pk, const Sk<E>& sk, const Ct<E>& ct
-    ){
+    [[nodiscard]] Results dec(const DlogTable<E>& table, const Pk<E>& pk, const Sk<E>& sk, const Ct<E>& ct){
         const auto batch = detail::broadcast({.keys = sk.s1.size(), .ciphertexts = ct.e.size()});
         const auto n = pk.a.size();
         const auto ps = concat<G1, E>(batch.segments, {

@@ -22,7 +22,8 @@ namespace cudapfe{
             check(cudaGetDevice(&device), "cudaGetDevice");
             check(cudaDeviceGetAttribute(&sm_count_, cudaDevAttrMultiProcessorCount, device), "cudaDeviceGetAttribute");
             cudaFuncAttributes attributes{};
-            if (cudaFuncGetAttributes(&attributes, probe_kernel_image) != cudaSuccess){
+            const auto image = cudaFuncGetAttributes(&attributes, probe_kernel_image);
+            if (image == cudaErrorNoKernelImageForDevice || image == cudaErrorInvalidDeviceFunction){
                 cudaGetLastError();
                 int major = 0;
                 int minor = 0;
@@ -34,6 +35,7 @@ namespace cudapfe{
                     + std::to_string(minor) + "; reconfigure with -DCMAKE_CUDA_ARCHITECTURES=" + std::to_string(major)
                     + std::to_string(minor));
             }
+            check(image, "cudaFuncGetAttributes");
             check(cudaStreamCreateWithFlags(&stream_, cudaStreamNonBlocking), "cudaStreamCreateWithFlags");
         }
 

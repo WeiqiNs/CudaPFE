@@ -92,9 +92,7 @@ namespace cudapfe::QFE::SGP{
     }
 
     template <Engine E>
-    [[nodiscard]] Results dec(
-        const DlogTable<E>& table, const Sk<E>& sk, const Ct<E>& ct
-    ){
+    [[nodiscard]] Results dec(const DlogTable<E>& table, const Sk<E>& sk, const Ct<E>& ct){
         const auto batch = detail::broadcast({.keys = sk.key.size(), .ciphertexts = ct.gamma.size()});
         if (batch.segments == 0) return {};
         const auto n = ct.a0.size() / ct.gamma.size();

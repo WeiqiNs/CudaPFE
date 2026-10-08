@@ -4,7 +4,6 @@
 #include <span>
 #include <stdexcept>
 #include <string>
-#include <type_traits>
 #include <utility>
 #include <vector>
 #include <cudapfe/core.hpp>
@@ -113,13 +112,12 @@ namespace cudapfe{
         template <class F>
         struct ToAffineOp{
             const detail::Jacobian<F>* in;
-            std::size_t count;
+            detail::Chunks chunks;
             detail::Affine<F>* out;
 
             CUDAPFE_HD void operator()(const std::size_t i) const{
-                const auto first = i * kAffineChunk;
-                const auto size = count - first < kAffineChunk ? count - first : kAffineChunk;
-                detail::to_affine(in + first, size, out + first);
+                const auto chunk = chunks.at(i);
+                detail::to_affine(in + chunk.first, chunk.count, out + chunk.first);
             }
         };
 
@@ -141,8 +139,8 @@ namespace cudapfe{
         template <class G, Engine E>
         Vec<G, E> normalized(const Buffer<detail::Jacobian<FieldOf<G>>, E>& points){
             Buffer<ElementOf<G>, E> out(points.size());
-            const ToAffineOp<FieldOf<G>> op{points.data(), points.size(), out.data()};
-            detail::for_each<E>(detail::ceil_div(points.size(), kAffineChunk), op);
+            const detail::Chunks chunks{1, points.size(), kAffineChunk};
+            detail::for_each<E>(chunks.count(), ToAffineOp<FieldOf<G>>{points.data(), chunks, out.data()});
             detail::finish<E>();
             return detail::vec<G, E>(std::move(out));
         }
@@ -190,8 +188,8 @@ namespace cudapfe{
     }
 
     template <class T, Engine E>
-    Vec<T, std::conditional_t<std::same_as<E, Cpu>, Gpu, Cpu>> Vec<T, E>::transferred() const{
-        using To = std::conditional_t<std::same_as<E, Cpu>, Gpu, Cpu>;
+    Vec<T, detail::OtherEngine<E>> Vec<T, E>::transferred() const{
+        using To = detail::OtherEngine<E>;
         return detail::vec<T, To>(detail::to_engine<To>(detail::to_host(storage_->buffer)));
     }
 

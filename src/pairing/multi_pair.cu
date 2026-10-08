@@ -125,7 +125,8 @@ namespace cudapfe{
 
         template <Engine E>
         void require_shapes(const Vec<G1, E>& ps, const std::size_t q_count, const PairShape& shape){
-            detail::require_shape(shape);
+            if (shape.length == 0) throw ShapeError("pair_segments needs a positive segment length");
+            (void)detail::checked_product(shape.segments, shape.length, "pair_segments");
             detail::layout(shape, shape.p).require_size(ps.size(), "pair_segments' G1 side");
             detail::layout(shape, shape.q).require_size(q_count, "pair_segments' G2 side");
         }

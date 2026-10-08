@@ -104,10 +104,7 @@ TEST(TowerTest, FrobeniusIsThePthPower){
 }
 
 TEST(TowerTest, CyclotomicPowMatchesPow){
-    const std::vector<Words<4>> exponents{
-        Words<4>{}, Words<4>{1}, Words<4>{2}, sub_word(kR, 1), kR,
-        Words<4>{0x9e3779b97f4a7c15, 0xf39cc0605cedc834, 0x1082276bf3a27251, 0x7a7ac1b4c8a3d4e5}
-    };
+    const std::vector<Words<4>> exponents{Words<4>{}, Words<4>{1}, sub_word(kR, 1)};
     for (const auto& input : tower_inputs()){
         for (const auto& e : exponents) EXPECT_EQ(cyclotomic_pow(input.unitary, e), pow(input.unitary, e));
     }

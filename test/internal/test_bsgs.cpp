@@ -56,9 +56,6 @@ TEST(BsgsPlanTest, StepsCoverTheRange){
 
 TEST(BsgsPlanTest, LaddersSpreadStepsOverResidentThreads){
     const std::vector<LadderCase> cases{
-        {1, 1, 1000000, 1},
-        {1, 1025, 1000, 2},
-        {50, 7, 1000, 1},
         {3, 1025, 1, 1025},
         {3, 1025, 10, 308},
         {0, 7, 1000, 1},

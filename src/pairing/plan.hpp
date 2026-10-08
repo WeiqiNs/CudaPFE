@@ -3,7 +3,6 @@
 
 #include <algorithm>
 #include <cstddef>
-#include <cudapfe/errors.hpp>
 #include <cudapfe/pairing.hpp>
 #include "vec/spread.hpp"
 
@@ -27,11 +26,6 @@ namespace cudapfe::detail{
 
     [[nodiscard]] constexpr Layout layout(const PairShape& shape, const Spread spread){
         return {shape.segments, shape.length, spread};
-    }
-
-    inline void require_shape(const PairShape& shape){
-        if (shape.length == 0) throw ShapeError("pair_segments needs a positive segment length");
-        (void)checked_product(shape.segments, shape.length, "pair_segments");
     }
 }
 

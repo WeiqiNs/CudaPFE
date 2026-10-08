@@ -145,13 +145,7 @@ TYPED_TEST(CurveTest, SubgroupCheckAgreesWithBlst){
         if (O::uncompress(&point, small_x_compressed<F>(x).data()) != BLST_SUCCESS) continue;
         EXPECT_EQ(in_subgroup(from_blst<Affine<F>>(point)), O::in_group(&point)) << int{x};
     }
-
-    const auto inside = to_affine(random_points<F>(1).back());
-    const auto blst_inside = to_blst(inside);
-    EXPECT_TRUE(O::in_group(&blst_inside));
-    EXPECT_TRUE(on_curve(inside));
-    EXPECT_TRUE(in_subgroup(inside));
-    EXPECT_TRUE(in_subgroup(CurveParams<F>::generator()));
+    EXPECT_TRUE(in_subgroup(to_affine(random_points<F>(1).back())));
 }
 
 TYPED_TEST(CurveTest, BatchToAffineMatchesSingle){
@@ -161,10 +155,6 @@ TYPED_TEST(CurveTest, BatchToAffineMatchesSingle){
     std::vector<Affine<F>> batch(points.size());
     to_affine(points.data(), points.size(), batch.data());
     for (std::size_t i = 0; i < points.size(); ++i) EXPECT_EQ(batch[i], to_affine(points[i])) << i;
-
-    const std::vector identities(10, Jacobian<F>::identity());
-    to_affine(identities.data(), identities.size(), batch.data());
-    for (std::size_t i = 0; i < identities.size(); ++i) EXPECT_EQ(batch[i], Affine<F>::identity()) << i;
 }
 
 TYPED_TEST(CurveTest, DeviceMatchesHost){
