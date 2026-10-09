@@ -23,11 +23,13 @@ endif ()
 option(CUDAPFE_BUILD_TESTS "Build the CudaPFE test suite" ${PROJECT_IS_TOP_LEVEL})
 option(CUDAPFE_BUILD_BENCH "Build the CudaPFE benchmark in bench/" OFF)
 option(CUDAPFE_PTXAS_VERBOSE "Print ptxas register and spill reports for every kernel" OFF)
-set(CUDAPFE_HOST_MILLER_BELOW 32 CACHE STRING "Gpu pair_segments runs everything on the host below this many pairs")
-set(CUDAPFE_HOST_FINAL_EXP_BELOW 24 CACHE STRING "Gpu pair_segments runs final exponentiations on the host below this many segments")
+set(CUDAPFE_HOST_MILLER_BELOW 512 CACHE STRING "Gpu pair_segments runs everything on the host below this many pairs")
+set(CUDAPFE_HOST_FINAL_EXP_BELOW 256 CACHE STRING "Gpu pair_segments runs final exponentiations on the host below this many segments")
+set(CUDAPFE_HOST_POINTS_BELOW 256 CACHE STRING "Gpu point operations run on the host below this many results or msm terms")
 
 include(GNUInstallDirs)
 find_package(CUDAToolkit REQUIRED)
+find_package(OpenMP REQUIRED COMPONENTS CXX)
 
 add_compile_options($<$<COMPILE_LANGUAGE:CUDA>:--expt-relaxed-constexpr> $<$<COMPILE_LANGUAGE:CUDA>:-Werror=cross-execution-space-call>)
 if (CUDAPFE_PTXAS_VERBOSE)
@@ -55,7 +57,10 @@ target_include_directories(cudapfe_core
         $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
         $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
 )
-target_link_libraries(cudapfe_core PRIVATE $<BUILD_INTERFACE:cudapfe_internal> PUBLIC cudapfe_blst CUDA::cudart)
+target_link_libraries(cudapfe_core
+        PRIVATE $<BUILD_INTERFACE:cudapfe_internal> OpenMP::OpenMP_CXX
+        PUBLIC cudapfe_blst CUDA::cudart
+)
 set_target_properties(cudapfe_core PROPERTIES EXPORT_NAME core POSITION_INDEPENDENT_CODE ON)
 
 add_library(cudapfe_fe INTERFACE)

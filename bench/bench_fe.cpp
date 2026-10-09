@@ -219,9 +219,9 @@ namespace{
                 "- Each call handles a batch of B keys or ciphertexts; Dec decrypts B pairs zipped. Inputs are random "
                 "vectors (and matrices) whose results lie in [0, {0}]. Fixed-base schemes reuse one discrete-log "
                 "table built outside Dec; Bishop et al. and Kim et al. search the range inside Dec.\n"
-                "- The Cpu engine runs on one core, for setups up to {1} x {1} matrices, decryptions up to {2} pairs "
-                "and msms up to {3} terms. Quadratic FE runs up to n = {4}: past it, inputs whose quadratic forms "
-                "stay within [0, {0}] have only zero entries.\n",
+                "- The Cpu engine runs on every hardware thread, for setups up to {1} x {1} matrices, decryptions up "
+                "to {2} pairs and msms up to {3} terms. Quadratic FE runs up to n = {4}: past it, inputs whose "
+                "quadratic forms stay within [0, {0}] have only zero entries.\n",
                 kBound, kCpuMatrixLimit, kCpuPairLimit, kCpuMsmLimit, kQuadraticLengthLimit
             );
     }

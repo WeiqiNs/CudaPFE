@@ -33,7 +33,10 @@ const bool ok = pair(sum.to<Cpu>().download().front(), G2::generator()) == Gt::g
 [LibPFE](https://github.com/WeiqiNs/LibPFE): the function-hiding inner-product schemes `cudapfe::IPFE::{BJK, TAO, KIM,
 LIN, KKS, OPT}` (`ipfe_<scheme>.hpp`) and the quadratic schemes `cudapfe::QFE::{BCFG, SGP}` (`qfe_<scheme>.hpp`). Every
 scheme is a template over the engine, chosen once at `setup<Cpu>(n)` or `setup<Gpu>(n)`; LibPFE's README describes
-the schemes and their papers. Consumers link `CudaPFE::fe`, which brings in `CudaPFE::core`.
+the schemes and their papers. Consumers link `CudaPFE::fe`, which brings in `CudaPFE::core`. The Gpu engine pays off on
+batches: it runs calls below the [placement thresholds](#calibrating-the-host-placement) on the host, but its setup
+inversions and its discrete-log searches stay on the device, so for single keys and ciphertexts the Cpu engine is
+usually faster. `cudapfe_bench_fe` shows where the two cross on a given machine.
 
 ```cpp
 #include <cudapfe/fe/ipfe_opt.hpp>
@@ -62,8 +65,10 @@ const auto results = IPFE::OPT::dec(table, IPFE::OPT::prepare(keys), ct);   // {
 
 ## Building
 
-CudaPFE builds on Linux with CMake 3.25 or newer, a C++20 compiler, the CUDA toolkit (13.x) and git. blst and
-GoogleTest are fetched at pinned commits; sppark is vendored under `third_party/sppark`.
+CudaPFE builds on Linux with CMake 3.25 or newer, a C++20 compiler with OpenMP, the CUDA toolkit (13.x) and git. blst
+and GoogleTest are fetched at pinned commits; sppark is vendored under `third_party/sppark`. The Cpu engine runs each
+batch call on every hardware thread; `OMP_NUM_THREADS` caps it. The installed package depends on OpenMP, so a project
+that calls `find_package(CudaPFE)` must enable the CXX language.
 
 ```bash
 cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_CUDA_COMPILER=/usr/local/cuda/bin/nvcc
@@ -105,22 +110,28 @@ scaled.
 
 `cudapfe_bench_fe` prints LibPFE's table (Setup, KeyGen, Enc, Dec, Prepare and Prepared Dec, in ms per call) for every
 scheme on both engines, once for single key/ciphertext pairs at growing n and once for batches. Each call handles the
-whole batch, and every Dec is checked against the result computed in plain integers. A case the single-threaded Cpu
-engine would take too long on, or that does not fit on the device, prints the reason in place of its times.
+whole batch, and every Dec is checked against the result computed in plain integers. A case the Cpu engine would take
+too long on, or that does not fit on the device, prints the reason in place of its times.
 
 ### Calibrating the host placement
 
 On the Gpu engine, `pair_segments` moves tiny workloads to the host: shapes below `CUDAPFE_HOST_MILLER_BELOW` pairs run
 entirely on the host, and shapes below `CUDAPFE_HOST_FINAL_EXP_BELOW` segments run only their final exponentiations there.
-The defaults are the cache variables in `CMakeLists.txt`, chosen from measurements on one GPU; recalibrate for another:
+Point addition, scaling, `mul_generator` and `msm` likewise run on the host below `CUDAPFE_HOST_POINTS_BELOW` results
+(terms, for `msm`): a single GPU thread takes milliseconds per scalar multiplication, so small calls cost the same
+fixed latency as large ones. The defaults are the cache variables in `CMakeLists.txt`, chosen from measurements on one
+GPU; recalibrate for another:
 
-1. Build a device-only copy with `-DCUDAPFE_HOST_MILLER_BELOW=0 -DCUDAPFE_HOST_FINAL_EXP_BELOW=0` and run
-   `cudapfe_bench --placement-sweep`. It times every shape of S segments of n pairs (powers of two up to 256, at most 1024
-   pairs) on the Gpu and Cpu engines. The smallest pair count at which the Gpu engine wins is the Miller threshold.
+1. Build a device-only copy with `-DCUDAPFE_HOST_MILLER_BELOW=0 -DCUDAPFE_HOST_FINAL_EXP_BELOW=0
+   -DCUDAPFE_HOST_POINTS_BELOW=0` and run `cudapfe_bench --placement-sweep`. It times every shape of S segments of n pairs
+   (powers of two up to 256, at most 1024 pairs) on the Gpu and Cpu engines. The smallest pair count at which the Gpu
+   engine wins is the Miller threshold. Its second table times scaling and `mul_generator` in both groups at doubling N;
+   the N at which the Gpu engine starts to win, interpolated between the last Cpu row and the first Gpu row, is the
+   point threshold.
 2. Build a second copy with `-DCUDAPFE_HOST_MILLER_BELOW=0` and a `CUDAPFE_HOST_FINAL_EXP_BELOW` above 256, so the Gpu
    engine always finishes on the host, and run the sweep again. Comparing its Gpu column with the device-only one gives
    the segment count at which device final exponentiation starts to win.
-3. Configure the real build with the two measured values.
+3. Configure the real build with the three measured values.
 
 A kernel's block size is its functor's optional `threads` constant, and `threads_per_block` in
 `src/support/for_each.cuh` supplies the default for functors without one. To tune the pairing kernels for a new GPU,

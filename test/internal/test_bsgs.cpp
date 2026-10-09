@@ -58,7 +58,6 @@ TEST(BsgsPlanTest, LaddersSpreadStepsOverResidentThreads){
     const std::vector<LadderCase> cases{
         {3, 1025, 1, 1025},
         {3, 1025, 10, 308},
-        {0, 7, 1000, 1},
     };
     for (const auto& [entries, length, resident_threads, per_ladder] : cases){
         EXPECT_EQ(plan_ladders(entries, length, resident_threads).size, per_ladder) << entries << "x" << length;

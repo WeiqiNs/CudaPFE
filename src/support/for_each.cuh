@@ -4,6 +4,7 @@
 #include <concepts>
 #include <cstddef>
 #include <string>
+#include <omp.h>
 #include <cudapfe/engine.hpp>
 #include "support/hd.hpp"
 #include "support/runtime.hpp"
@@ -17,24 +18,36 @@ namespace cudapfe::detail{
         else return 128;
     }
 
+    template <class Op>
+    consteval std::size_t parallel_from(){
+        if constexpr (requires{ Op::host_parallel_from; }) return Op::host_parallel_from;
+        else return 256;
+    }
+
     template <int Threads, class Op>
     __global__ __launch_bounds__(Threads) void run_each(const std::size_t count, const Op op){
         const auto index = static_cast<std::size_t>(blockIdx.x) * Threads + threadIdx.x;
         if (index < count) op(index);
     }
 
-    template <class Op>
+    template <Engine E, class Op>
     [[nodiscard]] std::size_t resident_threads(){
-        constexpr auto threads = threads_per_block<Op>();
-        int blocks = 0;
-        check(cudaOccupancyMaxActiveBlocksPerMultiprocessor(&blocks, run_each<threads, Op>, threads, 0),
-            "cudaOccupancyMaxActiveBlocksPerMultiprocessor");
-        return static_cast<std::size_t>(blocks) * threads * static_cast<std::size_t>(GpuRuntime::require().sm_count());
+        if constexpr (std::same_as<E, Cpu>){
+            return static_cast<std::size_t>(omp_get_max_threads());
+        } else {
+            constexpr auto threads = threads_per_block<Op>();
+            int blocks = 0;
+            check(cudaOccupancyMaxActiveBlocksPerMultiprocessor(&blocks, run_each<threads, Op>, threads, 0),
+                "cudaOccupancyMaxActiveBlocksPerMultiprocessor");
+            return static_cast<std::size_t>(blocks) * threads
+                * static_cast<std::size_t>(GpuRuntime::require().sm_count());
+        }
     }
 
     template <Engine E, class Op>
     void for_each(const std::size_t count, const Op& op){
         if constexpr (std::same_as<E, Cpu>){
+#pragma omp parallel for if(count >= parallel_from<Op>())
             for (std::size_t index = 0; index < count; ++index) op(index);
         } else {
             if (count == 0) return;

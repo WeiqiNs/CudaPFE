@@ -22,12 +22,7 @@ namespace cudapfe{
         }
     }
 
-    [[nodiscard]] inline Vector random_vector(const std::size_t size){
-        Vector r;
-        r.reserve(size);
-        for (std::size_t i = 0; i < size; ++i) r.push_back(Zp::random());
-        return r;
-    }
+    [[nodiscard]] Vector random_vector(std::size_t size);
 
     [[nodiscard]] inline Vector operator+(const Vector& x, const Vector& y){
         return detail::elementwise(x, y, "vector addition", std::plus<>{});

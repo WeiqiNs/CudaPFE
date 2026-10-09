@@ -17,3 +17,15 @@ TEST(RandomTest, SeedMakesTheRandomSequenceReproducible){
     EXPECT_NE(first.front(), first.back());
     EXPECT_THROW(seed(Bytes{}), ShapeError);
 }
+
+TEST(RandomTest, RandomVectorDrawsTheScalarSequence){
+    seed(bytes_of("stream"));
+    const auto drawn = random_vector(300);
+    const auto next = Zp::random();
+    seed(bytes_of("stream"));
+    std::vector<Zp> sequence(301);
+    for (auto& x : sequence) x = Zp::random();
+
+    EXPECT_EQ(drawn, std::vector(sequence.begin(), sequence.end() - 1));
+    EXPECT_EQ(next, sequence.back());
+}

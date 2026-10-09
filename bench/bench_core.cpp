@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <array>
 #include <concepts>
 #include <cstddef>
 #include <cstdint>
@@ -16,6 +17,7 @@
 #include <cudapfe/cudapfe.hpp>
 #include "dlog/bsgs.hpp"
 #include "pairing/plan.hpp"
+#include "vec/placement.hpp"
 #include "timing.hpp"
 
 using namespace cudapfe;
@@ -195,8 +197,9 @@ namespace{
 
     void print_header(const std::string_view mode){
         std::cout << std::format("# CudaPFE benchmark ({})\n\n", mode) << machine_summary()
-            << std::format("- CUDAPFE_HOST_MILLER_BELOW = {}, CUDAPFE_HOST_FINAL_EXP_BELOW = {}\n", detail::kHostMillerBelow,
-                detail::kHostFinalExpBelow)
+            << std::format("- CUDAPFE_HOST_MILLER_BELOW = {}, CUDAPFE_HOST_FINAL_EXP_BELOW = {}, "
+                "CUDAPFE_HOST_POINTS_BELOW = {}\n", detail::kHostMillerBelow, detail::kHostFinalExpBelow,
+                detail::kHostPointsBelow)
             << timing_summary();
     }
 
@@ -379,6 +382,38 @@ namespace{
             }
         }
     }
+
+    template <class G, Engine E>
+    std::array<Timed<Vec<G, E>>, 2> time_point_ops(const std::vector<G>& points, const Vector& scalars){
+        const auto ps = Vec<G, E>::upload(points);
+        const auto ks = Vec<Zp, E>::upload(scalars);
+        return {timed([&]{ return ps * ks; }), timed([&]{ return mul_generator<G>(ks); })};
+    }
+
+    template <class G>
+    void point_sweep_rows(const std::string_view group){
+        constexpr std::array<std::string_view, 2> kOps{"scale", "mul_generator"};
+        for (std::size_t n = 32; n <= 2048; n *= 2){
+            const auto scalars = random_vector(n);
+            const auto points = mul_generator<G>(Vec<Zp, Cpu>::upload(random_vector(n))).download();
+            const auto gpu = time_point_ops<G, Gpu>(points, scalars);
+            const auto cpu = time_point_ops<G, Cpu>(points, scalars);
+            for (std::size_t op = 0; op < kOps.size(); ++op){
+                if (gpu[op].result.download() != cpu[op].result.download()){
+                    throw std::runtime_error("engines disagree in the point placement sweep");
+                }
+                std::cout << std::format("| {} {} | {} | {} | {} | {} |\n", group, kOps[op], n,
+                    cell(gpu[op].time), cell(cpu[op].time), gpu[op].time.ms < cpu[op].time.ms ? "Gpu" : "Cpu");
+            }
+        }
+    }
+
+    void point_placement_sweep(){
+        std::cout << "\n## Point placement sweep (N results, ms)\n\n"
+            "| Op | N | Gpu | Cpu engine | faster |\n| --- | ---: | ---: | ---: | --- |\n";
+        point_sweep_rows<G1>("G1");
+        point_sweep_rows<G2>("G2");
+    }
 }
 
 int main(const int argc, char** argv){
@@ -404,6 +439,7 @@ int main(const int argc, char** argv){
     if (sweep){
         print_header("placement sweep");
         placement_sweep();
+        point_placement_sweep();
         return 0;
     }
     const auto& sizes = quick ? kQuick : kFull;

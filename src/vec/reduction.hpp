@@ -1,6 +1,7 @@
 #ifndef CUDAPFE_VEC_REDUCTION_HPP
 #define CUDAPFE_VEC_REDUCTION_HPP
 
+#include <algorithm>
 #include <cstddef>
 #include "support/hd.hpp"
 
@@ -12,6 +13,12 @@ namespace cudapfe::detail{
         std::size_t first;
         std::size_t count;
     };
+
+    [[nodiscard]] constexpr std::size_t chunk_size(
+        const std::size_t total, const std::size_t threads, const std::size_t cap
+    ){
+        return std::clamp<std::size_t>(ceil_div(total, std::max<std::size_t>(threads, 1)), 1, cap);
+    }
 
     struct Chunks{
         std::size_t segments;

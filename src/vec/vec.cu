@@ -14,6 +14,7 @@
 #include "field/tower.hpp"
 #include "support/for_each.cuh"
 #include "support/hd.hpp"
+#include "vec/placement.hpp"
 #include "vec/reduce.cuh"
 #include "vec/reduction.hpp"
 #include "vec/spread.hpp"
@@ -50,6 +51,8 @@ namespace cudapfe{
 
         template <class F>
         struct ScalarMulOp{
+            enum : std::size_t{ host_parallel_from = 2 };
+
             const detail::Affine<F>* x;
             const detail::Fr* k;
             detail::Jacobian<F>* out;
@@ -75,6 +78,8 @@ namespace cudapfe{
 
         template <class F>
         struct FixedBaseOp{
+            enum : std::size_t{ host_parallel_from = 2 };
+
             const detail::Fr* scalars;
             const detail::Affine<F>* table;
             detail::Jacobian<F>* out;
@@ -84,6 +89,8 @@ namespace cudapfe{
 
         template <class F>
         struct MsmTermOp{
+            enum : std::size_t{ host_parallel_from = 2 };
+
             const detail::Affine<F>* bases;
             const detail::Fr* scalars;
             detail::Layout base_layout;
@@ -201,6 +208,9 @@ namespace cudapfe{
     template <class T, Engine E>
     Vec<T, E> Vec<T, E>::plus(const Vec& y) const requires detail::GroupPoint<T>{
         detail::require_same_size(*this, y, "point vector addition");
+        if constexpr (std::same_as<E, Gpu>){
+            if (detail::points_on_host(size())) return (to<Cpu>() + y.template to<Cpu>()).template to<Gpu>();
+        }
         return generate_points<T, E>(size(), [&](auto* out){ return AddOp<FieldOf<T>>{data(*this), data(y), out}; });
     }
 
@@ -212,6 +222,9 @@ namespace cudapfe{
     template <class T, Engine E>
     Vec<T, E> Vec<T, E>::scaled(const Vec<Zp, E>& k) const requires detail::GroupPoint<T>{
         detail::require_same_size(*this, k, "point vector scaling");
+        if constexpr (std::same_as<E, Gpu>){
+            if (detail::points_on_host(size())) return (to<Cpu>() * k.template to<Cpu>()).template to<Gpu>();
+        }
         return generate_points<T, E>(size(), [&](auto* out){ return ScalarMulOp<FieldOf<T>>{data(*this), data(k), out}; });
     }
 
@@ -229,6 +242,11 @@ namespace cudapfe{
 
     template <class G, Engine E> requires detail::GroupPoint<G>
     Vec<G, E> mul_generator(const Vec<Zp, E>& scalars){
+        if constexpr (std::same_as<E, Gpu>){
+            if (detail::points_on_host(scalars.size())){
+                return mul_generator<G>(scalars.template to<Cpu>()).template to<Gpu>();
+            }
+        }
         using F = FieldOf<G>;
         const auto* table = engine_generator_table<E, F>();
         return generate_points<G, E>(scalars.size(), [&](auto* out){ return FixedBaseOp<F>{data(scalars), table, out}; });
@@ -244,8 +262,14 @@ namespace cudapfe{
         scalar_layout.require_size(scalars.size(), "msm scalars");
         const auto outputs = detail::checked_product(shape.segments, cols, "msm");
         if (rows == 0) return Vec<G, E>::upload(std::vector<G>(outputs));
+        const auto count = detail::checked_product(outputs, rows, "msm");
+        if constexpr (std::same_as<E, Gpu>){
+            if (detail::points_on_host(count)){
+                return msm(bases.template to<Cpu>(), scalars.template to<Cpu>(), shape).template to<Gpu>();
+            }
+        }
 
-        Buffer<detail::Jacobian<F>, E> terms(detail::checked_product(outputs, rows, "msm"));
+        Buffer<detail::Jacobian<F>, E> terms(count);
         detail::for_each<E>(terms.size(), MsmTermOp<F>{
             data(bases), data(scalars), base_layout, scalar_layout, cols, terms.data()
         });

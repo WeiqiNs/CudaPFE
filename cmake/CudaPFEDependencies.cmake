@@ -27,7 +27,9 @@ add_library(cudapfe_internal INTERFACE)
 target_include_directories(cudapfe_internal INTERFACE ${PROJECT_SOURCE_DIR}/src)
 target_include_directories(cudapfe_internal SYSTEM INTERFACE ${PROJECT_SOURCE_DIR}/third_party/sppark ${blst_SOURCE_DIR}/src)
 target_link_libraries(cudapfe_internal INTERFACE cudapfe_blst CUDA::cudart)
+target_compile_options(cudapfe_internal INTERFACE $<$<COMPILE_LANGUAGE:CUDA>:-Xcompiler=-fopenmp>)
 target_compile_definitions(cudapfe_internal INTERFACE
         CUDAPFE_HOST_MILLER_BELOW=${CUDAPFE_HOST_MILLER_BELOW}
         CUDAPFE_HOST_FINAL_EXP_BELOW=${CUDAPFE_HOST_FINAL_EXP_BELOW}
+        CUDAPFE_HOST_POINTS_BELOW=${CUDAPFE_HOST_POINTS_BELOW}
 )

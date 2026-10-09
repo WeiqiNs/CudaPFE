@@ -65,7 +65,7 @@ TYPED_TEST(MsmTest, SegmentsTakeTheirOwnOrTheSharedBasesAndScalars){
     using P = typename TypeParam::Value;
     using E = typename TypeParam::Engine;
     constexpr std::size_t segments = 3;
-    constexpr Shape shape{5, 4};
+    constexpr Shape shape{10, 9};
     constexpr auto entries = shape.rows * shape.cols;
     for (const auto bases_spread : {Spread::per_segment, Spread::shared}){
         for (const auto scalars_spread : {Spread::per_segment, Spread::shared}){

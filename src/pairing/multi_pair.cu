@@ -34,6 +34,8 @@ namespace cudapfe{
         using detail::LineStorage;
 
         struct PrepareLinesOp{
+            enum : std::size_t{ host_parallel_from = 2 };
+
             const detail::G2Affine* qs;
             detail::Line* lines;
 
@@ -45,6 +47,8 @@ namespace cudapfe{
         static_assert(detail::kMaxPairsPerItem <= detail::MaskedPairs::capacity);
 
         struct MillerItemOp{
+            enum : std::size_t{ host_parallel_from = 2 };
+
             detail::Chunks items;
             detail::Layout p_layout;
             detail::Layout q_layout;
@@ -71,6 +75,8 @@ namespace cudapfe{
         };
 
         struct FinalExpOp{
+            enum : std::size_t{ host_parallel_from = 2 };
+
             const Fp12* in;
             Fp12* out;
 
@@ -85,14 +91,12 @@ namespace cudapfe{
         }
 
         template <Engine E>
-        std::size_t pairs_per_item(const PairShape& shape){
-            if constexpr (std::same_as<E, Cpu>) return shape.length;
-            else return detail::pairs_per_item(shape, detail::resident_threads<MillerItemOp>());
-        }
-
-        template <Engine E>
         Buffer<Fp12, E> miller_products(const Vec<G1, E>& ps, const LineStorage<E>& qs, const PairShape& shape){
-            const detail::Chunks items{shape.segments, shape.length, pairs_per_item<E>(shape)};
+            const auto cap = std::same_as<E, Cpu> ? shape.length : detail::kMaxPairsPerItem;
+            const auto threads = detail::resident_threads<E, MillerItemOp>();
+            const detail::Chunks items{
+                shape.segments, shape.length, detail::chunk_size(shape.segments * shape.length, threads, cap)
+            };
             Buffer<Fp12, E> products(items.count());
             const MillerItemOp op{
                 items, detail::layout(shape, shape.p), detail::layout(shape, shape.q), data(ps), data(qs.sources),

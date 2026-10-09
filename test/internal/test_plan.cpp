@@ -9,9 +9,10 @@ using namespace cudapfe;
 using namespace cudapfe::detail;
 
 namespace{
-    struct PairsPerItemCase{
-        PairShape shape;
-        std::size_t resident_threads;
+    struct ChunkSizeCase{
+        std::size_t total;
+        std::size_t threads;
+        std::size_t cap;
         std::size_t expected;
     };
 }
@@ -35,15 +36,15 @@ TEST(PlanTest, ChunksCoverEachSegmentOnce){
     }
 }
 
-TEST(PlanTest, PairsPerItemClampsToBounds){
-    const std::vector<PairsPerItemCase> cases{
-        {{1, 10}, 1000, 1},
-        {{100, 50}, 1000, 5},
-        {{1, 100000}, 1000, kMaxPairsPerItem},
-        {{4, 4}, 0, kMaxPairsPerItem},
+TEST(PlanTest, ChunkSizeClampsToBounds){
+    const std::vector<ChunkSizeCase> cases{
+        {0, 1000, kMaxPairsPerItem, 1},
+        {5001, 1000, kMaxPairsPerItem, 6},
+        {100000, 1000, kMaxPairsPerItem, kMaxPairsPerItem},
+        {16, 0, kMaxPairsPerItem, kMaxPairsPerItem},
     };
-    for (const auto& [shape, resident_threads, expected] : cases){
-        EXPECT_EQ(pairs_per_item(shape, resident_threads), expected) << shape.segments << "x" << shape.length;
+    for (const auto& [total, threads, cap, expected] : cases){
+        EXPECT_EQ(chunk_size(total, threads, cap), expected) << total << " over " << threads << " up to " << cap;
     }
 }
 

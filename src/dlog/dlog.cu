@@ -9,6 +9,7 @@
 #include <utility>
 #include <vector>
 #include <cub/device/device_segmented_sort.cuh>
+#include <cuda/atomic>
 #include <cudapfe/core.hpp>
 #include <cudapfe/dlog.hpp>
 #include <cudapfe/vec.hpp>
@@ -75,12 +76,12 @@ namespace cudapfe{
             return exponent < 0 ? power(base, 0 - magnitude) : detail::conjugate(power(base, magnitude));
         }
 
+        CUDAPFE_HD Word load_min(Word* slot){
+            return cuda::atomic_ref<Word, cuda::thread_scope_device>(*slot).load(cuda::memory_order_relaxed);
+        }
+
         CUDAPFE_HD void store_min(Word* slot, const Word value){
-#ifdef __CUDA_ARCH__
-            atomicMin(slot, value);
-#else
-            *slot = std::min(*slot, value);
-#endif
+            cuda::atomic_ref<Word, cuda::thread_scope_device>(*slot).fetch_min(value, cuda::memory_order_relaxed);
         }
 
         CUDAPFE_HD std::uint64_t lower_bound(const std::uint64_t* keys, std::uint64_t size, const std::uint64_t key){
@@ -98,6 +99,8 @@ namespace cudapfe{
         }
 
         struct EntryOp{
+            enum : std::size_t{ host_parallel_from = 2 };
+
             const Fp12* bases;
             Steps steps;
             BsgsEntry* out;
@@ -110,6 +113,8 @@ namespace cudapfe{
         };
 
         struct BabyStepOp{
+            enum : std::size_t{ host_parallel_from = 2 };
+
             Chunks plan;
             const BsgsEntry* entries;
             std::uint64_t* fingerprints;
@@ -130,6 +135,8 @@ namespace cudapfe{
         };
 
         struct GiantStepOp{
+            enum : std::size_t{ host_parallel_from = 2 };
+
             Chunks plan;
             Steps steps;
             Spread tables;
@@ -154,6 +161,7 @@ namespace cudapfe{
                 auto gamma = targets[ladder.segment] * entry.shift * power(entry.giant, ladder.first);
 #pragma unroll 1
                 for (auto i = ladder.first; i < ladder.first + ladder.count; ++i){
+                    if (load_min(found + ladder.segment) <= i * steps.baby) return;
                     const auto key = fingerprint(gamma);
 #pragma unroll 1
                     for (auto at = lower_bound(keys, steps.baby, key); at < steps.baby && keys[at] == key; ++at){
@@ -167,12 +175,6 @@ namespace cudapfe{
                 }
             }
         };
-
-        template <Engine E, class Op>
-        std::size_t resident_threads(){
-            if constexpr (std::same_as<E, Cpu>) return 1;
-            else return detail::resident_threads<Op>();
-        }
 
         void sort_segments(BsgsTables<Cpu>& tables, const std::size_t entries){
             const auto width = tables.steps.baby;
@@ -217,7 +219,7 @@ namespace cudapfe{
         BsgsTables<E> build_tables(const Fp12* bases, const std::size_t count, const Steps& steps){
             Buffer<BsgsEntry, E> entries(count);
             detail::for_each<E>(count, EntryOp{bases, steps, entries.data()});
-            const auto plan = detail::plan_ladders(count, steps.baby, resident_threads<E, BabyStepOp>());
+            const auto plan = detail::plan_ladders(count, steps.baby, detail::resident_threads<E, BabyStepOp>());
             Buffer<std::uint64_t, E> fingerprints(count * steps.baby);
             Buffer<std::uint32_t, E> baby_steps(count * steps.baby);
             const BabyStepOp op{plan, entries.data(), fingerprints.data(), baby_steps.data()};
@@ -229,7 +231,7 @@ namespace cudapfe{
 
         template <Engine E>
         void giant_steps(const BsgsTables<E>& tables, const Targets& targets){
-            const auto resident = resident_threads<E, GiantStepOp>();
+            const auto resident = detail::resident_threads<E, GiantStepOp>();
             const auto plan = detail::plan_ladders(targets.count, tables.steps.giant, resident);
             detail::for_each<E>(plan.count(), GiantStepOp{
                 plan, tables.steps, targets.tables, tables.entries.data(), tables.fingerprints.data(),

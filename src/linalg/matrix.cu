@@ -69,16 +69,6 @@ namespace cudapfe{
             CUDAPFE_HD void operator()(const std::size_t t) const{ out[t] = in[t] * k; }
         };
 
-        struct EqualOp{
-            const Fr* x;
-            const Fr* y;
-            unsigned* differs;
-
-            CUDAPFE_HD void operator()(const std::size_t t) const{
-                if (!(x[t] == y[t])) *differs = 1;
-            }
-        };
-
         template <Engine E>
         struct Elimination{
             Zp determinant;
@@ -211,10 +201,7 @@ namespace cudapfe{
 
     template <Engine E>
     bool Matrix<E>::equals(const Matrix& b) const{
-        if (shape_ != b.shape_) return false;
-        auto differs = detail::to_engine<E>(std::vector<unsigned>{0});
-        detail::for_each<E>(entries_.size(), EqualOp{data(entries_), data(b.entries_), differs.data()});
-        return detail::element_at(differs, 0) == 0;
+        return shape_ == b.shape_ && entries_.download() == b.entries_.download();
     }
 
     template <Engine E>
