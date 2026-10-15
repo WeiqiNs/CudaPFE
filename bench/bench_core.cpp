@@ -6,6 +6,7 @@
 #include <format>
 #include <iostream>
 #include <optional>
+#include <random>
 #include <span>
 #include <stdexcept>
 #include <string>
@@ -24,6 +25,14 @@ using namespace cudapfe;
 using namespace cudapfe::bench;
 
 namespace{
+    struct FeMsmCase{
+        std::size_t segments;
+        std::size_t n;
+        Spread bases;
+        std::int64_t lo;
+        std::int64_t hi;
+    };
+
     struct Sizes{
         std::vector<std::size_t> lengths;
         std::vector<PairShape> batch_shapes;
@@ -35,6 +44,10 @@ namespace{
         std::uint64_t cpu_dlog_steps;
         std::size_t cpu_pair_limit;
         std::size_t blst_sample;
+        std::vector<FeMsmCase> msm_fe;
+        std::vector<std::size_t> msm_lengths;
+        std::vector<std::size_t> msm_widths;
+        std::size_t cpu_msm_limit;
     };
 
     struct Inputs{
@@ -65,6 +78,13 @@ namespace{
         .cpu_dlog_steps = std::uint64_t{1} << 24,
         .cpu_pair_limit = 25000,
         .blst_sample = 1000,
+        .msm_fe = {
+            {1000, 100, Spread::per_segment, 0, 1}, {1000, 100, Spread::shared, 0, 1},
+            {1000, 10, Spread::per_segment, -4, 4}, {16, 10, Spread::per_segment, -4, 4}
+        },
+        .msm_lengths = {std::size_t{1} << 12, std::size_t{1} << 18},
+        .msm_widths = {8, 32, 64, 128, 254},
+        .cpu_msm_limit = std::size_t{1} << 17,
     };
 
     const Sizes kQuick{
@@ -78,6 +98,10 @@ namespace{
         .cpu_dlog_steps = std::uint64_t{1} << 24,
         .cpu_pair_limit = 2000,
         .blst_sample = 64,
+        .msm_fe = {{16, 100, Spread::per_segment, 0, 1}, {16, 10, Spread::per_segment, -4, 4}},
+        .msm_lengths = {std::size_t{1} << 12},
+        .msm_widths = {8, 254},
+        .cpu_msm_limit = std::size_t{1} << 17,
     };
 
     std::string scaled_cell(const Measurement& m, const std::size_t items, const std::size_t measured){
@@ -365,6 +389,128 @@ namespace{
         }
     }
 
+    template <Engine E>
+    Timed<Vec<G1, E>> time_msm(const std::vector<G1>& bases, const Vector& scalars, const MsmShape& shape){
+        const auto ps = Vec<G1, E>::upload(bases);
+        const auto ks = Vec<Zp, E>::upload(scalars);
+        return timed([&]{ return msm(ps, ks, shape); });
+    }
+
+    Zp fe_msm_exponent(const Vector& logs, const Vector& f, const FeMsmCase& c, const std::size_t output){
+        const auto segment = output / c.n;
+        const auto first_base = c.bases == Spread::shared ? 0 : segment * c.n;
+        Zp exponent;
+        for (std::size_t row = 0; row < c.n; ++row){
+            exponent += logs[first_base + row] * f[(segment * c.n + row) * c.n + output % c.n];
+        }
+        return exponent;
+    }
+
+    template <Engine E>
+    void require_fe_msm(const Vec<G1, E>& out, const Vector& logs, const Vector& f, const FeMsmCase& c){
+        for (const auto output : {std::size_t{0}, out.size() - 1}){
+            if (out.at(output) != G1::mul_generator(fe_msm_exponent(logs, f, c, output))){
+                throw std::runtime_error(std::format("msm returned a wrong point at output {}", output));
+            }
+        }
+    }
+
+    void fe_msm(const Sizes& sizes){
+        std::cout << std::format(
+            "\n## 6. MSM in the FE shape (S segments x n x n, G1, ms)\n\n"
+            "Bases are multiples of the generator; each segment's scalars are an n x n matrix of integers drawn "
+            "uniformly from the stated range. The Cpu engine runs up to {} terms.\n\n"
+            "| S | n | Bases | Scalars | Gpu | Cpu engine |\n| ---: | ---: | --- | --- | ---: | ---: |\n",
+            sizes.cpu_msm_limit
+        );
+        for (const auto& c : sizes.msm_fe){
+            const auto terms = c.segments * c.n * c.n;
+            const auto logs = random_vector(c.bases == Spread::shared ? c.n : c.segments * c.n);
+            const auto bases = mul_generator<G1>(Vec<Zp, Gpu>::upload(logs)).download();
+            std::mt19937_64 engine(terms);
+            std::uniform_int_distribution<std::int64_t> entry(c.lo, c.hi);
+            Vector f(terms);
+            for (auto& k : f) k = Zp(entry(engine));
+            const MsmShape shape{c.segments, {c.n, c.n}, c.bases, Spread::per_segment};
+
+            const auto gpu = time_msm<Gpu>(bases, f, shape);
+            require_fe_msm(gpu.result, logs, f, c);
+            std::string cpu_cell = "–";
+            if (terms <= sizes.cpu_msm_limit){
+                const auto cpu = time_msm<Cpu>(bases, f, shape);
+                require_fe_msm(cpu.result, logs, f, c);
+                cpu_cell = cell(cpu.time);
+            }
+            std::cout << std::format("| {} | {} | {} | [{}, {}] | {} | {} |\n", c.segments, c.n,
+                c.bases == Spread::shared ? "shared" : "per segment", c.lo, c.hi, cell(gpu.time), cpu_cell);
+        }
+    }
+
+    Zp scalar_of_width(const std::size_t width, std::mt19937_64& engine){
+        const auto limbs = (width + 63) / 64;
+        const auto top_bit = std::uint64_t{1} << (width - 64 * (limbs - 1) - 1);
+        Zp scalar;
+        for (std::size_t limb = 0; limb < limbs; ++limb){
+            const auto word = limb + 1 < limbs ? engine() : top_bit | (engine() & (top_bit - 1));
+            scalar += Zp(word) * Zp(2).pow(64 * limb);
+        }
+        return scalar;
+    }
+
+    Bytes blst_pippenger(const std::vector<blst_p1_affine>& points, const std::vector<blst_scalar>& scalars,
+        const std::size_t width){
+        std::vector<const blst_p1_affine*> point_ptrs;
+        std::vector<const byte*> scalar_ptrs;
+        for (std::size_t i = 0; i < points.size(); ++i){
+            point_ptrs.push_back(&points[i]);
+            scalar_ptrs.push_back(scalars[i].b);
+        }
+        std::vector<limb_t> scratch(blst_p1s_mult_pippenger_scratch_sizeof(points.size()) / sizeof(limb_t));
+        blst_p1 sum;
+        blst_p1s_mult_pippenger(&sum, point_ptrs.data(), points.size(), scalar_ptrs.data(), width, scratch.data());
+        blst_p1_affine affine;
+        blst_p1_to_affine(&affine, &sum);
+        Bytes out(G1::compressed_size);
+        blst_p1_affine_compress(out.data(), &affine);
+        return out;
+    }
+
+    void msm_by_width(const Sizes& sizes){
+        std::cout << std::format(
+            "\n## 7. Single MSM by scalar width (G1, ms)\n\n"
+            "One sum of N terms whose scalars have their top bit at the stated width; blst runs "
+            "blst_p1s_mult_pippenger with nbits set to the width. The Cpu engine runs up to {} terms.\n\n"
+            "| N | Scalar bits | Gpu | Cpu engine | blst Pippenger 1 core |\n| ---: | ---: | ---: | ---: | ---: |\n",
+            sizes.cpu_msm_limit
+        );
+        for (const auto n : sizes.msm_lengths){
+            const auto bases = mul_generator<G1>(Vec<Zp, Gpu>::upload(random_vector(n))).download();
+            std::vector<blst_p1_affine> blst_bases;
+            for (const auto& base : bases) blst_bases.push_back(deserialized(base, blst_p1_deserialize));
+            for (const auto width : sizes.msm_widths){
+                std::mt19937_64 engine(n * width);
+                Vector scalars;
+                std::vector<blst_scalar> blst_scalars(n);
+                for (std::size_t i = 0; i < n; ++i){
+                    scalars.push_back(scalar_of_width(width, engine));
+                    blst_scalar_from_bendian(&blst_scalars[i], scalars[i].to_bytes().data());
+                }
+                const MsmShape shape{1, {n, 1}};
+                const auto blst = timed([&]{ return blst_pippenger(blst_bases, blst_scalars, width); });
+                const auto gpu = time_msm<Gpu>(bases, scalars, shape);
+                require_match(gpu.result.at(0).to_bytes(), blst.result, "msm<Gpu>");
+                std::string cpu_cell = "–";
+                if (n <= sizes.cpu_msm_limit){
+                    const auto cpu = time_msm<Cpu>(bases, scalars, shape);
+                    require_match(cpu.result.at(0).to_bytes(), blst.result, "msm<Cpu>");
+                    cpu_cell = cell(cpu.time);
+                }
+                std::cout << std::format("| {} | {} | {} | {} | {} |\n", n, width, cell(gpu.time), cpu_cell,
+                    cell(blst.time));
+            }
+        }
+    }
+
     void placement_sweep(){
         std::cout << "\n## Placement sweep (S segments of n pairs, ms)\n\n"
             "| S | n | pairs | Gpu | Cpu engine | faster |\n| ---: | ---: | ---: | ---: | ---: | --- |\n";
@@ -449,4 +595,6 @@ int main(const int argc, char** argv){
     fixed_base(sizes);
     gauss_jordan(sizes);
     discrete_log(sizes);
+    fe_msm(sizes);
+    msm_by_width(sizes);
 }

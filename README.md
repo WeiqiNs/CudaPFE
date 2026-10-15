@@ -100,13 +100,14 @@ cmake --build build --target cudapfe_bench cudapfe_bench_fe
 ```
 
 `cudapfe_bench` prints Markdown tables for multi-pairing latency, batch shapes (single pairs among them), fixed-base
-multiplication, matrix inversion and product, and discrete-log tables. Each table compares the Gpu engine with whichever
-of the Cpu engine, blst on one core and blst on every hardware thread its columns name. The header names the GPU, its SM
-count, the CPU thread count, the build type and the placement thresholds compiled in. Every timing is the median of
-several runs after a warm-up, except that a case whose warm-up exceeds the cut-off stated in the header reports that
-single run. Every table checks a result of the Gpu engine against blst (or, for matrices and discrete logs, against an
-independent answer) and aborts on a mismatch. Each table's caption states when a baseline is timed on a sample and
-scaled.
+multiplication, matrix inversion and product, and discrete-log tables, then two `msm` tables: the shape FE decryption
+uses (S segments of n x n small integer scalars) and a single sum by scalar width against blst's Pippenger. Each table
+compares the Gpu engine with whichever of the Cpu engine, blst on one core and blst on every hardware thread its columns
+name. The header names the GPU, its SM count, the CPU thread count, the build type and the placement thresholds compiled
+in. Every timing is the median of several runs after a warm-up, except that a case whose warm-up exceeds the cut-off
+stated in the header reports that single run. Every table checks a result of the Gpu engine against blst (or, for
+matrices, discrete logs and the FE-shaped `msm`, against an independent answer) and aborts on a mismatch. Each table's
+caption states when a baseline is timed on a sample and scaled.
 
 `cudapfe_bench_fe` prints LibPFE's table (Setup, KeyGen, Enc, Dec, Prepare and Prepared Dec, in ms per call) for every
 scheme on both engines, once for single key/ciphertext pairs at growing n and once for batches. Each call handles the
