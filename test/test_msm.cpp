@@ -1,4 +1,7 @@
+#include <algorithm>
+#include <array>
 #include <cstddef>
+#include <cstdint>
 #include <string_view>
 #include <vector>
 #include <gtest/gtest.h>
@@ -15,6 +18,11 @@ namespace{
         std::size_t scalars;
     };
 
+    struct ScalarMaker{
+        std::string_view name;
+        std::vector<Zp> (*make)(std::size_t);
+    };
+
     std::vector<Zp> scalars_with_zeros(const std::size_t count){
         std::vector<Zp> scalars;
         for (std::size_t i = 0; i < count; ++i){
@@ -22,6 +30,28 @@ namespace{
         }
         return scalars;
     }
+
+    std::vector<Zp> small_scalars(const std::size_t count){
+        std::vector<Zp> scalars;
+        for (std::size_t i = 0; i < count; ++i) scalars.push_back(Zp(static_cast<std::int64_t>(i % 9) - 4));
+        return scalars;
+    }
+
+    std::vector<Zp> scalars_of_width(const std::size_t count, const std::size_t width){
+        std::vector<Zp> scalars;
+        for (std::size_t i = 0; i < count; ++i){
+            if (width == 0 || i % 5 == 0){
+                scalars.emplace_back();
+                continue;
+            }
+            const auto low = std::uint64_t{1} << std::min<std::size_t>(width - 1, 63);
+            const auto magnitude = Zp(2).pow(width - 1) + Zp(i % low);
+            scalars.push_back(i % 2 == 0 ? magnitude : -magnitude);
+        }
+        return scalars;
+    }
+
+    constexpr std::array<ScalarMaker, 2> kScalarMakers{{{"random", scalars_with_zeros}, {"small", small_scalars}}};
 
     std::vector<Zp> slice(const std::vector<Zp>& values, const Spread spread, const std::size_t segment,
         const std::size_t length){
@@ -51,13 +81,15 @@ TYPED_TEST_SUITE(MsmTest, MsmCases);
 TYPED_TEST(MsmTest, EachColumnIsTheSumOverSharedBases){
     using P = typename TypeParam::Value;
     using E = typename TypeParam::Engine;
-    for (const auto& shape : std::vector<Shape>{{1, 1}, {37, 1}, {300, 3}, {20, 50}, {0, 3}, {4, 0}}){
-        const auto logs = scalars_with_zeros(shape.rows);
-        const auto f = scalars_with_zeros(shape.rows * shape.cols);
-        const auto bases = mul_generator<P>(Vec<Zp, E>::upload(logs));
+    for (const auto& [name, make_scalars] : kScalarMakers){
+        for (const auto& shape : std::vector<Shape>{{1, 1}, {37, 1}, {300, 3}, {20, 50}, {0, 3}, {4, 0}}){
+            const auto logs = scalars_with_zeros(shape.rows);
+            const auto f = make_scalars(shape.rows * shape.cols);
+            const auto bases = mul_generator<P>(Vec<Zp, E>::upload(logs));
 
-        EXPECT_EQ(msm(bases, Vec<Zp, E>::upload(f), {1, shape}).download(), exponent_columns<P>(logs, f, shape))
-            << shape.rows << "x" << shape.cols;
+            EXPECT_EQ(msm(bases, Vec<Zp, E>::upload(f), {1, shape}).download(), exponent_columns<P>(logs, f, shape))
+                << name << " " << shape.rows << "x" << shape.cols;
+        }
     }
 }
 
@@ -67,22 +99,39 @@ TYPED_TEST(MsmTest, SegmentsTakeTheirOwnOrTheSharedBasesAndScalars){
     constexpr std::size_t segments = 3;
     constexpr Shape shape{10, 9};
     constexpr auto entries = shape.rows * shape.cols;
-    for (const auto bases_spread : {Spread::per_segment, Spread::shared}){
-        for (const auto scalars_spread : {Spread::per_segment, Spread::shared}){
-            const auto logs = scalars_with_zeros(bases_spread == Spread::shared ? shape.rows : segments * shape.rows);
-            const auto f = scalars_with_zeros(scalars_spread == Spread::shared ? entries : segments * entries);
-            std::vector<P> expected;
-            for (std::size_t s = 0; s < segments; ++s){
-                const auto columns = exponent_columns<P>(
-                    slice(logs, bases_spread, s, shape.rows), slice(f, scalars_spread, s, entries), shape);
-                expected.insert(expected.end(), columns.begin(), columns.end());
-            }
-            const auto bases = mul_generator<P>(Vec<Zp, E>::upload(logs));
-            const MsmShape msm_shape{segments, shape, bases_spread, scalars_spread};
+    for (const auto& [name, make_scalars] : kScalarMakers){
+        for (const auto bases_spread : {Spread::per_segment, Spread::shared}){
+            for (const auto scalars_spread : {Spread::per_segment, Spread::shared}){
+                const auto logs = scalars_with_zeros(
+                    bases_spread == Spread::shared ? shape.rows : segments * shape.rows);
+                const auto f = make_scalars(scalars_spread == Spread::shared ? entries : segments * entries);
+                std::vector<P> expected;
+                for (std::size_t s = 0; s < segments; ++s){
+                    const auto columns = exponent_columns<P>(
+                        slice(logs, bases_spread, s, shape.rows), slice(f, scalars_spread, s, entries), shape);
+                    expected.insert(expected.end(), columns.begin(), columns.end());
+                }
+                const auto bases = mul_generator<P>(Vec<Zp, E>::upload(logs));
+                const MsmShape msm_shape{segments, shape, bases_spread, scalars_spread};
 
-            EXPECT_EQ(msm(bases, Vec<Zp, E>::upload(f), msm_shape).download(), expected)
-                << static_cast<int>(bases_spread) << static_cast<int>(scalars_spread);
+                EXPECT_EQ(msm(bases, Vec<Zp, E>::upload(f), msm_shape).download(), expected)
+                    << name << " " << static_cast<int>(bases_spread) << static_cast<int>(scalars_spread);
+            }
         }
+    }
+}
+
+TYPED_TEST(MsmTest, ScalarsOfEveryWidthSumCorrectly){
+    using P = typename TypeParam::Value;
+    using E = typename TypeParam::Engine;
+    constexpr Shape shape{16, 16};
+    const auto logs = scalars_with_zeros(shape.rows);
+    const auto bases = mul_generator<P>(Vec<Zp, E>::upload(logs));
+    for (const std::size_t width : {0, 1, 3, 32, 33, 64, 128, 129, 192, 254}){
+        const auto f = scalars_of_width(shape.rows * shape.cols, width);
+
+        EXPECT_EQ(msm(bases, Vec<Zp, E>::upload(f), {1, shape}).download(), exponent_columns<P>(logs, f, shape))
+            << width;
     }
 }
 
