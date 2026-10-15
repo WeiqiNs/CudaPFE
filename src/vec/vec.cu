@@ -93,6 +93,10 @@ namespace cudapfe{
             detail::Layout scalars;
             std::size_t cols;
 
+            [[nodiscard]] CUDAPFE_HD std::size_t rows() const{ return bases.length; }
+
+            [[nodiscard]] CUDAPFE_HD std::size_t outputs() const{ return bases.segments * cols; }
+
             [[nodiscard]] CUDAPFE_HD std::size_t base(const std::size_t output, const std::size_t row) const{
                 return bases.offset(output / cols) + row;
             }
@@ -112,7 +116,7 @@ namespace cudapfe{
             detail::Jacobian<F>* out;
 
             CUDAPFE_HD void operator()(const std::size_t t) const{
-                const auto rows = layout.bases.length;
+                const auto rows = layout.rows();
                 const auto row = t % rows;
                 const auto output = t / rows;
                 out[t] = detail::mul(detail::from_affine(bases[layout.base(output, row)]),
@@ -133,6 +137,12 @@ namespace cudapfe{
 
         struct MaxBitLength{
             CUDAPFE_HD std::size_t operator()(const std::size_t x, const std::size_t y) const{ return x < y ? y : x; }
+        };
+
+        template <Engine E>
+        struct SignedScalars{
+            Buffer<detail::SignedScalar, E> values;
+            std::size_t bits;
         };
 
         template <class F>
@@ -219,12 +229,6 @@ namespace cudapfe{
         }
 
         template <Engine E>
-        struct SignedScalars{
-            Buffer<detail::SignedScalar, E> values;
-            std::size_t bits;
-        };
-
-        template <Engine E>
         SignedScalars<E> signed_scalars(const Vec<Zp, E>& scalars){
             const auto size = scalars.size();
             Buffer<detail::SignedScalar, E> values(size);
@@ -237,10 +241,11 @@ namespace cudapfe{
 
         template <class G, Engine E>
         Buffer<detail::Jacobian<FieldOf<G>>, E> term_sums(
-            const Vec<G, E>& bases, const Vec<Zp, E>& scalars, const MsmLayout& layout, const std::size_t outputs
+            const Vec<G, E>& bases, const Vec<Zp, E>& scalars, const MsmLayout& layout
         ){
             using F = FieldOf<G>;
-            const auto rows = layout.bases.length;
+            const auto outputs = layout.outputs();
+            const auto rows = layout.rows();
             Buffer<detail::Jacobian<F>, E> terms(outputs * rows);
             detail::for_each<E>(terms.size(), MsmTermOp<F>{layout, data(bases), data(scalars), terms.data()});
             return detail::reduce_segments<E, detail::Jacobian<F>>(
@@ -249,10 +254,11 @@ namespace cudapfe{
 
         template <class G, Engine E>
         Buffer<detail::Jacobian<FieldOf<G>>, E> straus_sums(
-            const Vec<G, E>& bases, const SignedScalars<E>& scalars, const MsmLayout& layout, const std::size_t outputs
+            const Vec<G, E>& bases, const SignedScalars<E>& scalars, const MsmLayout& layout
         ){
             using F = FieldOf<G>;
-            const auto rows = layout.bases.length;
+            const auto outputs = layout.outputs();
+            const auto rows = layout.rows();
             const auto threads = detail::resident_threads<E, MsmStrausOp<F>>();
             const detail::Chunks items{outputs, rows, detail::chunk_size(outputs * rows, threads, rows)};
             Buffer<detail::Jacobian<F>, E> partials(items.count());
@@ -363,11 +369,10 @@ namespace cudapfe{
         }
 
         const MsmLayout layout{base_layout, scalar_layout, cols};
-        const auto signed_values = signed_scalars(scalars);
-        if (signed_values.bits > detail::kStrausMaxBits){
-            return normalized<G, E>(term_sums(bases, scalars, layout, outputs));
+        if (const auto signed_values = signed_scalars(scalars); signed_values.bits <= detail::kStrausMaxBits){
+            return normalized<G, E>(straus_sums(bases, signed_values, layout));
         }
-        return normalized<G, E>(straus_sums(bases, signed_values, layout, outputs));
+        return normalized<G, E>(term_sums(bases, scalars, layout));
     }
 
     template <class G, Engine E> requires detail::GroupPoint<G>
