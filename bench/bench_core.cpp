@@ -29,8 +29,7 @@ namespace{
         std::size_t segments;
         std::size_t n;
         Spread bases;
-        std::int64_t lo;
-        std::int64_t hi;
+        Range entries;
     };
 
     struct Sizes{
@@ -79,8 +78,8 @@ namespace{
         .cpu_pair_limit = 25000,
         .blst_sample = 1000,
         .msm_fe = {
-            {1000, 100, Spread::per_segment, 0, 1}, {1000, 100, Spread::shared, 0, 1},
-            {1000, 10, Spread::per_segment, -4, 4}, {16, 10, Spread::per_segment, -4, 4}
+            {1000, 100, Spread::per_segment, {0, 1}}, {1000, 100, Spread::shared, {0, 1}},
+            {1000, 10, Spread::per_segment, {-4, 4}}, {16, 10, Spread::per_segment, {-4, 4}}
         },
         .msm_lengths = {std::size_t{1} << 12, std::size_t{1} << 18},
         .msm_widths = {8, 32, 64, 128, 254},
@@ -98,7 +97,7 @@ namespace{
         .cpu_dlog_steps = std::uint64_t{1} << 24,
         .cpu_pair_limit = 2000,
         .blst_sample = 64,
-        .msm_fe = {{16, 100, Spread::per_segment, 0, 1}, {16, 10, Spread::per_segment, -4, 4}},
+        .msm_fe = {{16, 100, Spread::per_segment, {0, 1}}, {16, 10, Spread::per_segment, {-4, 4}}},
         .msm_lengths = {std::size_t{1} << 12},
         .msm_widths = {8, 254},
         .cpu_msm_limit = std::size_t{1} << 17,
@@ -428,7 +427,7 @@ namespace{
             const auto logs = random_vector(c.bases == Spread::shared ? c.n : c.segments * c.n);
             const auto bases = mul_generator<G1>(Vec<Zp, Gpu>::upload(logs)).download();
             std::mt19937_64 engine(terms);
-            std::uniform_int_distribution<std::int64_t> entry(c.lo, c.hi);
+            std::uniform_int_distribution<std::int64_t> entry(c.entries.lo, c.entries.hi);
             Vector f(terms);
             for (auto& k : f) k = Zp(entry(engine));
             const MsmShape shape{c.segments, {c.n, c.n}, c.bases, Spread::per_segment};
@@ -442,7 +441,8 @@ namespace{
                 cpu_cell = cell(cpu.time);
             }
             std::cout << std::format("| {} | {} | {} | [{}, {}] | {} | {} |\n", c.segments, c.n,
-                c.bases == Spread::shared ? "shared" : "per segment", c.lo, c.hi, cell(gpu.time), cpu_cell);
+                c.bases == Spread::shared ? "shared" : "per segment", c.entries.lo, c.entries.hi, cell(gpu.time),
+                cpu_cell);
         }
     }
 

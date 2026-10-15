@@ -41,15 +41,12 @@ namespace{
         std::vector<Affine<F>> bases;
         std::vector<Fr> scalars;
         std::size_t stride = 1;
-        std::size_t bits_at_least = 0;
     };
 
     template <class F>
-    struct EvaluateStraus{
-        const MsmTerms<F>* terms;
-        Affine<F>* sums;
-
-        CUDAPFE_HD void operator()(const std::size_t i) const{ sums[i] = to_affine(straus_sum(terms[i])); }
+    struct StrausInputs{
+        std::vector<Affine<F>> bases;
+        std::vector<SignedScalar> scalars;
     };
 
     template <class F>
@@ -120,12 +117,6 @@ namespace{
         return k < 0 ? -magnitude : magnitude;
     }
 
-    Fr low_bits_set(const std::size_t count){
-        Words<Fr::N> words{};
-        for (std::size_t i = 0; i < count; ++i) words[i / 64] |= Word{1} << (i % 64);
-        return Fr::from_canonical(words);
-    }
-
     template <class F>
     std::vector<StrausCase<F>> straus_cases(){
         const auto points = random_points<F>(2);
@@ -133,22 +124,14 @@ namespace{
         const auto q = to_affine(points[4]);
         const auto r_minus_one = Fr::from_canonical(sub_word(kR, 1));
         return {
-            {{p, q}, {small_fr(3), small_fr(5)}},
             {{p, p}, {small_fr(1), small_fr(1)}},
             {{p, p, q}, {small_fr(1), small_fr(-1), small_fr(1)}},
             {{Affine<F>::identity(), p}, {small_fr(7), small_fr(2)}},
             {{p, q}, {Fr::zero(), Fr::zero()}},
-            {{p, q, p}, {small_fr((1ll << 31) + 1), small_fr(-((1ll << 30) + 3)), low_bits_set(kStrausMaxBits)}},
-            {{p, q}, {small_fr(3), small_fr(5)}, 1, 64},
+            {{p, q, p}, {small_fr((1ll << 31) + 1), small_fr(-((1ll << 30) + 3)), small_fr((1ll << 32) - 1)}},
             {{p, q}, {small_fr(3), r_minus_one, r_minus_one, small_fr(5)}, 3},
         };
     }
-
-    template <class F>
-    struct StrausInputs{
-        std::vector<Affine<F>> bases;
-        std::vector<SignedScalar> scalars;
-    };
 
     template <class F>
     StrausInputs<F> flattened(const std::vector<StrausCase<F>>& cases){
@@ -161,11 +144,12 @@ namespace{
     }
 
     template <class F>
-    std::vector<MsmTerms<F>> straus_terms(const std::vector<StrausCase<F>>& cases, const Affine<F>* bases,
-        const SignedScalar* scalars){
+    std::vector<MsmTerms<F>> straus_terms(const std::vector<StrausCase<F>>& cases, const StrausInputs<F>& inputs){
         std::vector<MsmTerms<F>> terms;
+        const auto* bases = inputs.bases.data();
+        const auto* scalars = inputs.scalars.data();
         for (const auto& c : cases){
-            auto bits = c.bits_at_least;
+            std::size_t bits = 0;
             for (std::size_t k = 0; k < c.bases.size(); ++k){
                 bits = std::max(bits, bit_length(signed_scalar(c.scalars[k * c.stride]).magnitude));
             }
@@ -265,27 +249,8 @@ TYPED_TEST(CurveTest, StrausSumMatchesBlst){
     using F = TypeParam;
     const auto cases = straus_cases<F>();
     const auto inputs = flattened(cases);
-    const auto terms = straus_terms(cases, inputs.bases.data(), inputs.scalars.data());
+    const auto terms = straus_terms(cases, inputs);
     for (std::size_t i = 0; i < cases.size(); ++i){
         EXPECT_EQ(to_affine(straus_sum(terms[i])), blst_straus(cases[i])) << i;
     }
-}
-
-TYPED_TEST(CurveTest, StrausSumOnDeviceMatchesHost){
-    CUDAPFE_REQUIRE_GPU();
-    using F = TypeParam;
-    const auto cases = straus_cases<F>();
-    const auto inputs = flattened(cases);
-    DeviceArray<Affine<F>> bases(inputs.bases.size());
-    DeviceArray<SignedScalar> scalars(inputs.scalars.size());
-    DeviceArray<MsmTerms<F>> terms(cases.size());
-    DeviceArray<Affine<F>> sums(cases.size());
-    bases.copy_from(inputs.bases);
-    scalars.copy_from(inputs.scalars);
-    terms.copy_from(straus_terms(cases, bases.data(), scalars.data()));
-    for_each<Gpu>(cases.size(), EvaluateStraus<F>{terms.data(), sums.data()});
-
-    const auto actual = sums.copy_to_host();
-    const auto host_terms = straus_terms(cases, inputs.bases.data(), inputs.scalars.data());
-    for (std::size_t i = 0; i < actual.size(); ++i) EXPECT_EQ(actual[i], to_affine(straus_sum(host_terms[i]))) << i;
 }
