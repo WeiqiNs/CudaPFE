@@ -18,6 +18,7 @@ namespace cudapfe::detail{
     inline constexpr Words<6> kFp2SqrtExponent = shift_right(sub_word(kP, 3), 2);
     inline constexpr Words<6> kFpHalfExponent = shift_right(sub_word(kP, 1), 1);
     inline constexpr Words<4> kFrInverseExponent = sub_word(kR, 2);
+    inline constexpr Words<4> kFrHalf = shift_right(kR, 1);
 
     inline constexpr Word kZ = 0xd201000000010000;
     inline constexpr Words<2> kZSquared{0x0000000100000000, 0xac45a4010001a402};

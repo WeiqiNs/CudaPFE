@@ -39,6 +39,11 @@ namespace cudapfe::detail{
     using G2Affine = Affine<Fp2>;
     using G2Jacobian = Jacobian<Fp2>;
 
+    struct SignedScalar{
+        Words<Fr::N> magnitude;
+        bool negative;
+    };
+
     template <Side S>
     using SideField = std::conditional_t<S == Side::g1, Fp, Fp2>;
 
@@ -159,6 +164,14 @@ namespace cudapfe::detail{
         return p.y.square() == p.x.square() * p.x + CurveParams<F>::b();
     }
 
+    [[nodiscard]] CUDAPFE_HD SignedScalar signed_scalar(const Fr& k){
+        constexpr auto half = kFrHalf;
+        const auto words = k.canonical();
+        const auto negated = (-k).canonical();
+        const auto negative = less(half, words);
+        return {negative ? negated : words, negative};
+    }
+
     template <class F, std::size_t M>
     [[nodiscard]] CUDAPFE_HD Jacobian<F> mul(const Jacobian<F>& p, const Words<M>& scalar){
         auto result = Jacobian<F>::identity();
@@ -207,9 +220,10 @@ namespace cudapfe::detail{
 
     [[nodiscard]] CUDAPFE_HD G1Jacobian mul(const G1Jacobian& p, const Fr& k){
         constexpr auto z_squared = kZSquared;
-        const auto [hi, lo] = divide(k.canonical(), z_squared);
+        const auto [magnitude, negative] = signed_scalar(k);
+        const auto [hi, lo] = divide(magnitude, z_squared);
         const std::array<Words<2>, 2> digits{lo, Words<2>{hi[0], hi[1]}};
-        return interleaved_mul(p, digits, [](const G1Jacobian& q){ return times_z_squared(q); });
+        return interleaved_mul(negative ? neg(p) : p, digits, [](const G1Jacobian& q){ return times_z_squared(q); });
     }
 
     [[nodiscard]] CUDAPFE_HD G2Jacobian psi(const G2Jacobian& p){
@@ -220,11 +234,12 @@ namespace cudapfe::detail{
 
     [[nodiscard]] CUDAPFE_HD G2Jacobian mul(const G2Jacobian& p, const Fr& k){
         constexpr Words<1> z{kZ};
-        const auto [q1, d0] = divide(k.canonical(), z);
+        const auto [magnitude, negative] = signed_scalar(k);
+        const auto [q1, d0] = divide(magnitude, z);
         const auto [q2, d1] = divide(q1, z);
         const auto [d3, d2] = divide(q2, z);
         const std::array<Words<1>, 4> digits{d0, d1, d2, Words<1>{d3[0]}};
-        return interleaved_mul(p, digits, [](const G2Jacobian& q){ return neg(psi(q)); });
+        return interleaved_mul(negative ? neg(p) : p, digits, [](const G2Jacobian& q){ return neg(psi(q)); });
     }
 
     [[nodiscard]] CUDAPFE_HD bool in_subgroup(const G1Affine& p){
