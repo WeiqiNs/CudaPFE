@@ -10,12 +10,6 @@ using cudapfe::IPFE::IntVec;
 namespace{
     constexpr std::int64_t kEntryBound = 5;
 
-    std::int64_t inner_product(const IntVec& x, const IntVec& y){
-        std::int64_t total = 0;
-        for (std::size_t i = 0; i < x.size(); ++i) total += x[i] * y[i];
-        return total;
-    }
-
     Results pairwise_products(const IntMatrix& functions, const IntMatrix& messages){
         Results products;
         for (std::size_t i = 0; i < functions.size(); ++i) products.push_back(inner_product(functions[i], messages[i]));

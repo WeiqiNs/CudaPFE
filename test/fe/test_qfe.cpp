@@ -11,14 +11,6 @@ using cudapfe::QFE::IntVec;
 namespace{
     constexpr std::int64_t kEntryBound = 2;
 
-    std::int64_t quadratic_form(const IntVec& x, const IntMatrix& f, const IntVec& y){
-        std::int64_t total = 0;
-        for (std::size_t i = 0; i < x.size(); ++i){
-            for (std::size_t j = 0; j < y.size(); ++j) total += x[i] * f[i][j] * y[j];
-        }
-        return total;
-    }
-
     std::vector<IntMatrix> random_matrices(const std::size_t count, const std::size_t size){
         std::vector<IntMatrix> matrices;
         for (std::size_t i = 0; i < count; ++i) matrices.push_back(random_rows(size, size, kEntryBound));
