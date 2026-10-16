@@ -88,5 +88,3 @@ ctest --test-dir build --output-on-failure
 Device code targets `CMAKE_CUDA_ARCHITECTURES` (default `120`); without a matching GPU the Gpu tests report as skipped.
 `-DCUDAPFE_BUILD_BENCH=ON` builds the benchmarks `cudapfe_bench` and `cudapfe_bench_fe`. After `cmake --install build`,
 projects use `find_package(CudaPFE REQUIRED)` and link `CudaPFE::fe` (or `CudaPFE::core` for the pairing layer alone).
-
-Licensed under Apache-2.0.
