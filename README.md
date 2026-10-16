@@ -105,6 +105,8 @@ const auto results = IPFE::OPT::dec(table, IPFE::OPT::prepare(keys), ct);   // {
 - Schemes that decrypt against a fixed base take a `DlogTable` over `msk.base` (TAO) or `<SCHEME>::base()`, so one
   table serves every decryption; BCFG's `dec` also takes the public key. BJK and KIM derive a base per pair and take a
   `Range` instead, searching it with `DlogTables` on every call.
+- Keys, prepared keys and `DlogTable`s never change after they are built, so threads can share them;
+  `test/fe/test_concurrency.cpp` encrypts and decrypts from several threads under one shared key on both engines.
 - Every IPFE scheme has `prepare(sk)`, which precomputes the keys' pairing lines once (`G2Lines`, about 20 KB per G2
   point) for keys that decrypt many ciphertexts.
 - BJK, TAO and KIM invert a random matrix at setup. On the Gpu engine the inversion must fit in free device memory;

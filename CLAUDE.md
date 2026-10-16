@@ -30,6 +30,9 @@ and tests in a CUDA container without a GPU, then builds the demo in `demo/` aga
   (`detail::points_on_host`, `detail::place`), so a Gpu test or benchmark shape must exceed them to reach the device.
 - The Gpu engine is one process-wide stream (`GpuRuntime::require()`), and each operation synchronizes before
   returning; nothing overlaps across calls.
+- Keys, prepared keys and `DlogTable` are immutable and shared across threads; `test/fe/test_concurrency.cpp` is the
+  contract. Under ThreadSanitizer run with `OMP_NUM_THREADS=1`: libgomp is uninstrumented, so with a team every
+  parallel region reports a false race.
 - Kernels select on data without branching where lanes of a warp disagree, such as the sign in `signed_scalar` and
   `straus_sum`. `msm` routes by the widest scalar against `kStrausMaxBits`; change it only with the width table of
   `cudapfe_bench` section 7 in view.
