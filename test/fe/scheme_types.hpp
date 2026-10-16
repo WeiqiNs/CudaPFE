@@ -29,4 +29,20 @@ inline cudapfe::IPFE::IntMatrix random_rows(const std::size_t count, const std::
     return rows;
 }
 
+inline std::int64_t inner_product(const cudapfe::IPFE::IntVec& x, const cudapfe::IPFE::IntVec& y){
+    std::int64_t total = 0;
+    for (std::size_t i = 0; i < x.size(); ++i) total += x[i] * y[i];
+    return total;
+}
+
+inline std::int64_t quadratic_form(
+    const cudapfe::IPFE::IntVec& x, const cudapfe::IPFE::IntMatrix& f, const cudapfe::IPFE::IntVec& y
+){
+    std::int64_t total = 0;
+    for (std::size_t i = 0; i < x.size(); ++i){
+        for (std::size_t j = 0; j < y.size(); ++j) total += x[i] * f[i][j] * y[j];
+    }
+    return total;
+}
+
 #endif

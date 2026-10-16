@@ -44,8 +44,8 @@ LibPFE runs each operation on a single core, one group operation after another. 
 pieces of work: KeyGen and Enc turn n entries into group elements, Dec pairs about n points in one multi-pairing, and
 Kim et al.'s setup inverts an n × n matrix. CudaPFE runs those pieces on thousands of GPU threads at once, so the gain
 grows with n; Kim et al.'s setup takes RELIC 88 s at n = 1,000, about what the GPU needs at n = 10,000. Decryption
-gains least, because its final exponentiation and discrete-log search are fixed work per call that does not grow with
-n.
+gains less than KeyGen and Enc, because its final exponentiation and discrete-log search are fixed work per call that
+does not grow with n.
 
 The core operations against blst on all 16 threads, medians from `cudapfe_bench`:
 
