@@ -41,7 +41,7 @@ namespace cudapfe::detail{
     template <class F>
     [[nodiscard]] CUDAPFE_HD Jacobian<F> fixed_base_mul(const Affine<F>* table, const Fr& scalar){
         constexpr Word mask = kWindowDigits;
-        const auto words = scalar.canonical();
+        const auto [words, negative] = signed_scalar(scalar);
         auto result = Jacobian<F>::identity();
 #pragma unroll 1
         for (std::size_t window = 0; window < kWindows; ++window){
@@ -49,7 +49,7 @@ namespace cudapfe::detail{
             const auto digit = (words[bit / 64] >> (bit % 64)) & mask;
             if (digit != 0) result = add_mixed(result, table[window * kWindowDigits + digit - 1]);
         }
-        return result;
+        return negative ? neg(result) : result;
     }
 }
 

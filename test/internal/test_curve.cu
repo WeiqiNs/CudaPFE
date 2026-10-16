@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <cstddef>
 #include <cstdint>
 #include <vector>
@@ -5,12 +6,14 @@
 #include <support/oracle.hpp>
 #include <support/samples.hpp>
 #include "curve/curve.hpp"
+#include "curve/straus.hpp"
 #include "field/constants.hpp"
 #include "field/field.hpp"
 #include "field/tower.hpp"
 #include "support/device_array.hpp"
 #include "support/for_each.cuh"
 #include "support/hd.hpp"
+#include "support/words.hpp"
 
 using namespace cudapfe;
 using namespace cudapfe::detail;
@@ -31,6 +34,19 @@ namespace{
         Affine<F> sum, mixed_sum, twice, negation, product, affine;
 
         friend bool operator==(const CurveResults&, const CurveResults&) = default;
+    };
+
+    template <class F>
+    struct StrausCase{
+        std::vector<Affine<F>> bases;
+        std::vector<Fr> scalars;
+        std::size_t stride = 1;
+    };
+
+    template <class F>
+    struct StrausInputs{
+        std::vector<Affine<F>> bases;
+        std::vector<SignedScalar> scalars;
     };
 
     template <class F>
@@ -94,6 +110,65 @@ namespace{
             inputs.push_back({p, q, scalars[i]});
         }
         return inputs;
+    }
+
+    Fr small_fr(const std::int64_t k){
+        const auto magnitude = Fr::from_canonical({static_cast<Word>(k < 0 ? -k : k)});
+        return k < 0 ? -magnitude : magnitude;
+    }
+
+    template <class F>
+    std::vector<StrausCase<F>> straus_cases(){
+        const auto points = random_points<F>(2);
+        const auto p = to_affine(points[3]);
+        const auto q = to_affine(points[4]);
+        const auto r_minus_one = Fr::from_canonical(sub_word(kR, 1));
+        return {
+            {{p, p}, {small_fr(1), small_fr(1)}},
+            {{p, p, q}, {small_fr(1), small_fr(-1), small_fr(1)}},
+            {{Affine<F>::identity(), p}, {small_fr(7), small_fr(2)}},
+            {{p, q}, {Fr::zero(), Fr::zero()}},
+            {{p, q, p}, {small_fr((1ll << 31) + 1), small_fr(-((1ll << 30) + 3)), small_fr((1ll << 32) - 1)}},
+            {{p, q}, {small_fr(3), r_minus_one, r_minus_one, small_fr(5)}, 3},
+        };
+    }
+
+    template <class F>
+    StrausInputs<F> flattened(const std::vector<StrausCase<F>>& cases){
+        StrausInputs<F> inputs;
+        for (const auto& c : cases){
+            inputs.bases.insert(inputs.bases.end(), c.bases.begin(), c.bases.end());
+            for (const auto& k : c.scalars) inputs.scalars.push_back(signed_scalar(k));
+        }
+        return inputs;
+    }
+
+    template <class F>
+    std::vector<MsmTerms<F>> straus_terms(const std::vector<StrausCase<F>>& cases, const StrausInputs<F>& inputs){
+        std::vector<MsmTerms<F>> terms;
+        const auto* bases = inputs.bases.data();
+        const auto* scalars = inputs.scalars.data();
+        for (const auto& c : cases){
+            std::size_t bits = 0;
+            for (std::size_t k = 0; k < c.bases.size(); ++k){
+                bits = std::max(bits, bit_length(signed_scalar(c.scalars[k * c.stride]).magnitude));
+            }
+            terms.push_back({bases, scalars, c.stride, c.bases.size(), bits});
+            bases += c.bases.size();
+            scalars += c.scalars.size();
+        }
+        return terms;
+    }
+
+    template <class F>
+    Affine<F> blst_straus(const StrausCase<F>& c){
+        auto sum = to_blst(Jacobian<F>::identity());
+        for (std::size_t k = 0; k < c.bases.size(); ++k){
+            if (c.bases[k].is_identity()) continue;
+            const auto term = blst_mult<F>(to_blst(from_affine(c.bases[k])), c.scalars[k * c.stride]);
+            sum = blst_result(CurveOracle<F>::add, sum, term);
+        }
+        return blst_affine<F>(sum);
     }
 }
 
@@ -168,4 +243,14 @@ TYPED_TEST(CurveTest, DeviceMatchesHost){
 
     const auto actual = results.copy_to_host();
     for (std::size_t i = 0; i < actual.size(); ++i) EXPECT_EQ(actual[i], evaluate(inputs[i])) << i;
+}
+
+TYPED_TEST(CurveTest, StrausSumMatchesBlst){
+    using F = TypeParam;
+    const auto cases = straus_cases<F>();
+    const auto inputs = flattened(cases);
+    const auto terms = straus_terms(cases, inputs);
+    for (std::size_t i = 0; i < cases.size(); ++i){
+        EXPECT_EQ(to_affine(straus_sum(terms[i])), blst_straus(cases[i])) << i;
+    }
 }

@@ -2,11 +2,58 @@
 
 [![CudaPFE CI](https://github.com/WeiqiNs/CudaPFE/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/WeiqiNs/CudaPFE/actions/workflows/ci.yml)
 
-CudaPFE is a C++20 and CUDA library for BLS12-381 pairings and pairing-based functional encryption. Batch operations
-run on a CPU engine or a CUDA engine; both execute the same `__host__ __device__` arithmetic, which is built on
-[sppark](https://github.com/supranational/sppark)'s Montgomery fields and checked bit for bit against
-[blst](https://github.com/supranational/blst). CudaPFE makes no constant-time guarantees and is meant for research
-prototypes.
+Functional encryption lets the holder of a key learn one function of encrypted data, such as an inner product, and
+nothing else. CudaPFE is a C++20 and CUDA library that runs eight published pairing-based schemes in batches on an
+NVIDIA GPU, on BLS12-381 pairing arithmetic written for CUDA. It is the GPU counterpart of
+[LibPFE](https://github.com/WeiqiNs/LibPFE), with the same schemes. CudaPFE makes no constant-time guarantees and is
+meant for research prototypes.
+
+## Highlights
+
+- **BLS12-381 on the GPU.** The field tower, curve arithmetic, Miller loops, final exponentiation, multi-scalar
+  multiplication, Gauss–Jordan inversion and baby-step giant-step discrete logs run as CUDA kernels over
+  [sppark](https://github.com/supranational/sppark)'s Montgomery fields, checked bit for bit against
+  [blst](https://github.com/supranational/blst).
+- **One code base, two engines.** Every operation is a `__host__ __device__` functor. The `Gpu` engine launches it as
+  a kernel and the `Cpu` engine runs it on every core with OpenMP, so the same arithmetic is the reference
+  implementation and the fallback for calls too small to be worth a launch.
+- **Batch-first functional encryption.** Six inner-product and two quadratic schemes take whole batches of keys and
+  ciphertexts, and each batch costs a fixed number of engine calls whatever its size.
+- **Tuned from profiles.** Nsight Systems timelines and the kernels' register reports drove the changes described in
+  [Performance](#performance).
+- **Tested on both engines.** The test suite runs its cases on the Cpu and Gpu engines against blst or plain-integer
+  answers. CI
+  builds and runs the suite in a CUDA container without a GPU, where the Gpu cases report as skipped.
+
+## Performance
+
+An RTX 5080 (84 SMs) against blst on all 16 threads of an AMD Ryzen 7 9800X3D, Release build, medians from
+`cudapfe_bench`:
+
+| Workload | CudaPFE, GPU | blst, 16 threads | Speedup |
+| --- | ---: | ---: | ---: |
+| One multi-pairing of 10,000 pairs | 8.5 ms | 130 ms | 15× |
+| 100,000 independent pairings | 121 ms | 4,168 ms | 34× |
+| 1,000 multi-pairings of 208 pairs each | 113 ms | 2,509 ms | 22× |
+
+On a batch of 1,000 key–ciphertext pairs of length 100, `cudapfe_bench_fe` decrypts Ojaswi et al.'s inner-product
+scheme in 70 ms (55 ms with prepared keys, about 18,000 decryptions per second) and the quadratic schemes of Baltico
+et al. and Dufour-Sans et al. in 208 and 171 ms.
+
+Two changes, both found by profiling, account for most of the quadratic-FE speed:
+
+1. **Negative entries as small scalars.** `Zp(-3)` is r − 3, a full 255-bit scalar, so negative FE entries made `msm`
+   about 6× slower than positive ones. `signed_scalar` multiplies a scalar above r/2 as its negation and negates the
+   point. The first version chose the path with a branch: on random scalars about half of each warp took either
+   side, the warp ran both, and random-scalar `msm` slowed by up to 50%. Selecting without a branch removed that.
+   Baltico et al.'s decryption of 1,000 pairs of length 100 with entries of either sign went from 2,102 to 546 ms.
+2. **A Straus sum for small scalars.** Each `msm` term used to run a full scalar multiplication with its own
+   15-point table, which took 255 registers per thread and spilled 2.2 KB to local memory (G1). FE scalars have
+   1–3 bits, so `msm` now finds the widest scalar of the call and, up to 32 bits, has each thread sum a chunk of an
+   output's terms bit by bit: one doubling per bit for the whole chunk and one mixed addition per set bit. The G1
+   kernel uses 186 registers and spills nothing. The FE-shaped sum of 1,000 × 100 × 100 terms went from 131 to 8 ms,
+   and decryption of 1,000 pairs of length 100 from 575 to 195 ms (Baltico et al.) and from 421 to 170 ms
+   (Dufour-Sans et al.). Wider scalars keep the per-term path, which the GPU runs faster above 32 bits.
 
 ## Core API
 
@@ -100,17 +147,19 @@ cmake --build build --target cudapfe_bench cudapfe_bench_fe
 ```
 
 `cudapfe_bench` prints Markdown tables for multi-pairing latency, batch shapes (single pairs among them), fixed-base
-multiplication, matrix inversion and product, and discrete-log tables. Each table compares the Gpu engine with whichever
-of the Cpu engine, blst on one core and blst on every hardware thread its columns name. The header names the GPU, its SM
-count, the CPU thread count, the build type and the placement thresholds compiled in. Every timing is the median of
-several runs after a warm-up, except that a case whose warm-up exceeds the cut-off stated in the header reports that
-single run. Every table checks a result of the Gpu engine against blst (or, for matrices and discrete logs, against an
-independent answer) and aborts on a mismatch. Each table's caption states when a baseline is timed on a sample and
-scaled.
+multiplication, matrix inversion and product, and discrete-log tables, then two `msm` tables: the shape FE decryption
+uses (S segments of n x n small integer scalars) and a single sum by scalar width against blst's Pippenger. Each table
+compares the Gpu engine with whichever of the Cpu engine, blst on one core and blst on every hardware thread its columns
+name. The header names the GPU, its SM count, the CPU thread count, the build type and the placement thresholds compiled
+in. Every timing is the median of several runs after a warm-up, except that a case whose warm-up exceeds the cut-off
+stated in the header reports that single run. Every table checks a result of the Gpu engine against blst (or, for
+matrices, discrete logs and the FE-shaped `msm`, against an independent answer) and aborts on a mismatch. Each table's
+caption states when a baseline is timed on a sample and scaled.
 
 `cudapfe_bench_fe` prints LibPFE's table (Setup, KeyGen, Enc, Dec, Prepare and Prepared Dec, in ms per call) for every
-scheme on both engines, once for single key/ciphertext pairs at growing n and once for batches. Each call handles the
-whole batch, and every Dec is checked against the result computed in plain integers. A case the Cpu engine would take
+scheme on both engines, once for single key/ciphertext pairs at growing n, once for batches, and at n = 100 again with
+entries of either sign. Each call handles the whole batch, and every Dec is checked against the result computed in
+plain integers. A case the Cpu engine would take
 too long on, or that does not fit on the device, prints the reason in place of its times.
 
 ### Calibrating the host placement

@@ -28,9 +28,12 @@ namespace{
 
     using IPFE::Results;
 
+    enum class Entries{ non_negative, either_sign };
+
     struct Case{
         std::size_t length;
         std::size_t batch;
+        Entries entries = Entries::non_negative;
     };
 
     struct Sample{
@@ -46,14 +49,22 @@ namespace{
         std::size_t msm_terms;
     };
 
-    const std::vector<Case> kFull{{10, 1}, {100, 1}, {1000, 1}, {10000, 1}, {10, 1000}, {100, 1000}};
-    const std::vector<Case> kQuick{{10, 1}, {100, 1}, {10, 16}};
+    const std::vector<Case> kFull{
+        {10, 1}, {100, 1}, {1000, 1}, {10000, 1}, {10, 1000}, {100, 1000},
+        {100, 1, Entries::either_sign}, {100, 1000, Entries::either_sign}
+    };
+    const std::vector<Case> kQuick{{10, 1}, {100, 1}, {10, 16}, {10, 16, Entries::either_sign}};
+
+    Range results(const Case& c){
+        return c.entries == Entries::non_negative ? Range{0, kBound} : Range{-kBound, kBound};
+    }
 
     Sample samples(const Case& c, const int degree){
         std::mt19937_64 engine(c.length * c.batch);
         const auto terms = std::pow(static_cast<double>(c.length), degree - 1);
-        const auto largest = static_cast<std::int64_t>(std::pow(static_cast<double>(kBound) / terms, 1.0 / degree));
-        std::uniform_int_distribution<std::int64_t> entry(0, largest);
+        const auto bound = static_cast<double>(results(c).hi);
+        const auto largest = static_cast<std::int64_t>(std::pow(bound / terms, 1.0 / degree));
+        std::uniform_int_distribution<std::int64_t> entry(c.entries == Entries::non_negative ? 0 : -largest, largest);
         const auto random_row = [&]{
             IPFE::IntVec v(c.length);
             for (auto& e : v) e = entry(engine);
@@ -176,7 +187,7 @@ namespace{
 
         const auto sk = timed([&]{ return Family::key(state, inputs); });
         const auto ct = timed([&]{ return Family::encrypt(state, inputs); });
-        const auto decrypt = S::decryptor(state, Range{0, kBound});
+        const auto decrypt = S::decryptor(state, results(c));
         const auto decryption_ms = [&](const auto& key){
             const auto found = timed([&]{ return decrypt(key, ct.result); });
             if (found.result != inputs.values){
@@ -204,11 +215,12 @@ namespace{
     template <class Family, template <Engine> class... Schemes>
     void table(const Case& c){
         const auto inputs = samples(c, Family::degree);
+        const auto range = results(c);
         std::cout << std::format(
-            "\n## {}, n = {}, B = {} (ms per call)\n\n"
+            "\n## {}, n = {}, B = {}, results in [{}, {}] (ms per call)\n\n"
             "| Scheme | Engine | Setup | KeyGen | Enc | Dec | Prepare | Prepared Dec |\n"
             "| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |\n",
-            Family::title, c.length, c.batch
+            Family::title, c.length, c.batch, range.lo, range.hi
         );
         (measure_engines<Family, Schemes>(c, inputs), ...);
     }
@@ -217,8 +229,10 @@ namespace{
         std::cout << std::format("# CudaPFE FE benchmark ({})\n\n", mode) << machine_summary() << timing_summary()
             << std::format(
                 "- Each call handles a batch of B keys or ciphertexts; Dec decrypts B pairs zipped. Inputs are random "
-                "vectors (and matrices) whose results lie in [0, {0}]. Fixed-base schemes reuse one discrete-log "
-                "table built outside Dec; Bishop et al. and Kim et al. search the range inside Dec.\n"
+                "vectors (and matrices) whose results lie in the range each table names: [0, {0}], or [-{0}, {0}] "
+                "for entries of either sign, whose negative entries are scalars near the group order. Fixed-base "
+                "schemes reuse one discrete-log table built outside Dec; Bishop et al. and Kim et al. search the range "
+                "inside Dec.\n"
                 "- The Cpu engine runs on every hardware thread, for setups up to {1} x {1} matrices, decryptions up "
                 "to {2} pairs and msms up to {3} terms. Quadratic FE runs up to n = {4}: past it, inputs whose "
                 "quadratic forms stay within [0, {0}] have only zero entries.\n",
