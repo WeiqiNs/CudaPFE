@@ -18,6 +18,7 @@
 #include <cudapfe/cudapfe.hpp>
 #include "dlog/bsgs.hpp"
 #include "pairing/plan.hpp"
+#include "support/hd.hpp"
 #include "vec/placement.hpp"
 #include "timing.hpp"
 
@@ -108,7 +109,7 @@ namespace{
     }
 
     std::size_t chunk_size(const std::size_t count){
-        return (count + cpu_threads() - 1) / cpu_threads();
+        return detail::ceil_div(count, cpu_threads());
     }
 
     template <class F>
@@ -155,14 +156,6 @@ namespace{
     Bytes gt_bytes(const blst_fp12& f){
         Bytes out(Gt::byte_size);
         blst_bendian_from_fp12(out.data(), &f);
-        return out;
-    }
-
-    blst_fp12 blst_pair(const blst_p1_affine& p, const blst_p2_affine& q){
-        blst_fp12 miller;
-        blst_miller_loop(&miller, &q, &p);
-        blst_fp12 out;
-        blst_final_exp(&out, &miller);
         return out;
     }
 
@@ -447,7 +440,7 @@ namespace{
     }
 
     Zp scalar_of_width(const std::size_t width, std::mt19937_64& engine){
-        const auto limbs = (width + 63) / 64;
+        const auto limbs = detail::ceil_div(width, 64);
         const auto top_bit = std::uint64_t{1} << (width - 64 * (limbs - 1) - 1);
         Zp scalar;
         for (std::size_t limb = 0; limb < limbs; ++limb){

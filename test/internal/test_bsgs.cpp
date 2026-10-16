@@ -66,15 +66,13 @@ TEST(BsgsPlanTest, LaddersSpreadStepsOverResidentThreads){
 
 TEST(BsgsPlanTest, ChunksRespectTheBudget){
     for (const std::uint64_t baby : {std::uint64_t{1}, std::uint64_t{7}, std::uint64_t{65537}, std::uint64_t{1} << 32}){
-        for (const std::size_t budget : {kTableBudgetBytes, std::size_t{1000}, std::size_t{1}}){
-            const auto chunk = entries_per_chunk(baby, budget);
-            const auto entry_bytes = Wide{baby} * kBabyStepBytes;
-            if (entry_bytes > budget){
-                EXPECT_EQ(chunk, 1u) << baby << " " << budget;
-            } else {
-                EXPECT_LE(chunk * entry_bytes, budget) << baby << " " << budget;
-                EXPECT_GT((chunk + 1) * entry_bytes, budget) << baby << " " << budget;
-            }
+        const auto chunk = entries_per_chunk(baby);
+        const auto entry_bytes = Wide{baby} * kBabyStepBytes;
+        if (entry_bytes > kTableBudgetBytes){
+            EXPECT_EQ(chunk, 1u) << baby;
+        } else {
+            EXPECT_LE(chunk * entry_bytes, kTableBudgetBytes) << baby;
+            EXPECT_GT((chunk + 1) * entry_bytes, kTableBudgetBytes) << baby;
         }
     }
 }

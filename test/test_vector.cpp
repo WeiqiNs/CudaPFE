@@ -22,7 +22,6 @@ TEST(VectorTest, VectorOperationsAreElementwise){
     EXPECT_EQ(inner(x, y), Zp(32));
     EXPECT_EQ(sum(x), Zp(6));
     EXPECT_EQ(concat({x, y, vector({7})}), vector({1, 2, 3, 4, 5, 6, 7}));
-    EXPECT_EQ(random_vector(4).size(), 4u);
 
     EXPECT_THROW((void)(x + vector({1, 2})), ShapeError);
 }

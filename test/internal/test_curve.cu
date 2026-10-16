@@ -120,8 +120,8 @@ namespace{
     template <class F>
     std::vector<StrausCase<F>> straus_cases(){
         const auto points = random_points<F>(2);
-        const auto p = to_affine(points[3]);
-        const auto q = to_affine(points[4]);
+        const auto p = to_affine(points[points.size() - 2]);
+        const auto q = to_affine(points.back());
         const auto r_minus_one = Fr::from_canonical(sub_word(kR, 1));
         return {
             {{p, p}, {small_fr(1), small_fr(1)}},

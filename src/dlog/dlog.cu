@@ -1,5 +1,4 @@
 #include <algorithm>
-#include <concepts>
 #include <cstddef>
 #include <cstdint>
 #include <limits>
@@ -225,7 +224,7 @@ namespace cudapfe{
             const BabyStepOp op{plan, entries.data(), fingerprints.data(), baby_steps.data()};
             detail::for_each<E>(plan.count(), op);
             BsgsTables<E> tables{steps, std::move(entries), std::move(fingerprints), std::move(baby_steps)};
-            if (count != 0) sort_segments(tables, count);
+            sort_segments(tables, count);
             return tables;
         }
 
@@ -288,7 +287,7 @@ namespace cudapfe{
         const auto& [bases, steps] = *bases_;
         detail::require_same_size(bases, targets, "DlogTables::find");
         auto found = not_found<E>(targets.size());
-        const auto chunk = detail::entries_per_chunk(steps.baby, detail::kTableBudgetBytes);
+        const auto chunk = detail::entries_per_chunk(steps.baby);
         for (std::size_t first = 0; first < targets.size(); first += chunk){
             const auto count = std::min(chunk, targets.size() - first);
             const auto tables = build_tables<E>(data(bases) + first, count, steps);

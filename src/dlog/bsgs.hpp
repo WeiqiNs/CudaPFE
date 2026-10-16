@@ -46,8 +46,8 @@ namespace cudapfe::detail{
         return {entries, length, chunk_size(entries * length, resident_threads, length)};
     }
 
-    [[nodiscard]] constexpr std::size_t entries_per_chunk(const std::uint64_t baby, const std::size_t budget_bytes){
-        return std::max<std::size_t>(budget_bytes / (baby * kBabyStepBytes), 1);
+    [[nodiscard]] constexpr std::size_t entries_per_chunk(const std::uint64_t baby){
+        return std::max<std::size_t>(kTableBudgetBytes / (baby * kBabyStepBytes), 1);
     }
 }
 
