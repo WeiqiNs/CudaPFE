@@ -27,8 +27,27 @@ meant for research prototypes.
 
 ## Performance
 
-An RTX 5080 (84 SMs) against blst on all 16 threads of an AMD Ryzen 7 9800X3D, Release build, medians from
-`cudapfe_bench`:
+Against [LibPFE](https://github.com/WeiqiNs/LibPFE), the same schemes on RELIC, for one key and one ciphertext of
+length n with LibPFE's benchmark inputs. BLS12-381 on an RTX 5080 and an AMD Ryzen 7 9800X3D, Release builds,
+best of several runs:
+
+| Scheme | Implementation | Setup (ms) | KeyGen (ms) | Enc (ms) | Dec (ms) |
+| --- | --- | ---: | ---: | ---: | ---: |
+| Ojaswi et al., n = 10,000 | LibPFE, RELIC | 18.9 | 1,405 | 493 | 2,036 |
+| | CudaPFE, GPU | 0.32 | 2.5 | 1.9 | 9.9 |
+| | **Speedup** | **59×** | **566×** | **265×** | **207×** |
+| Kim et al., n = 1,000 | LibPFE, RELIC | 88,051 | 203 | 110 | 207 |
+| | CudaPFE, GPU | 166 | 1.8 | 1.1 | 10.2 |
+| | **Speedup** | **531×** | **115×** | **97×** | **20×** |
+
+LibPFE runs each operation on a single core, one group operation after another. Each operation is n independent
+pieces of work: KeyGen and Enc turn n entries into group elements, Dec pairs about n points in one multi-pairing, and
+Kim et al.'s setup inverts an n × n matrix. CudaPFE runs those pieces on thousands of GPU threads at once, so the gain
+grows with n; Kim et al.'s setup takes RELIC 88 s at n = 1,000, about what the GPU needs at n = 10,000. Decryption
+gains least, because its final exponentiation and discrete-log search are fixed work per call that does not grow with
+n.
+
+The core operations against blst on all 16 threads, medians from `cudapfe_bench`:
 
 | Workload | CudaPFE, GPU | blst, 16 threads | Speedup |
 | --- | ---: | ---: | ---: |
