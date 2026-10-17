@@ -70,7 +70,7 @@ struct Kks{
 template <cudapfe::Engine E>
 struct Opt{
     using Engine = E;
-    static constexpr std::string_view name = "Ojaswi et al.";
+    static constexpr std::string_view name = "Acharya et al.";
     static auto setup(const std::size_t n){ return cudapfe::IPFE::OPT::setup<E>(n); }
     static auto decryptor(const cudapfe::IPFE::OPT::Msk<E>&, const cudapfe::Range& range){
         return table_decryptor<E>(cudapfe::IPFE::OPT::base(), range);
@@ -91,7 +91,7 @@ struct Bcfg{
 template <cudapfe::Engine E>
 struct Sgp{
     using Engine = E;
-    static constexpr std::string_view name = "Dufour-Sans et al.";
+    static constexpr std::string_view name = "Ryffel et al.";
     static auto setup(const std::size_t n){ return cudapfe::QFE::SGP::setup<E>(n); }
     static auto decryptor(const cudapfe::QFE::SGP::Keys<E>&, const cudapfe::Range& range){
         return table_decryptor<E>(cudapfe::QFE::SGP::base(), range);

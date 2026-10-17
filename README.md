@@ -37,7 +37,7 @@ RTX 5080 and a Ryzen 7 9800X3D, best of several runs:
 
 | Scheme | Implementation | Setup (ms) | KeyGen (ms) | Enc (ms) | Dec (ms) |
 | --- | --- | ---: | ---: | ---: | ---: |
-| Ojaswi et al., n = 10,000 | LibPFE, RELIC | 18.9 | 1,405 | 493 | 2,036 |
+| Acharya et al., n = 10,000 | LibPFE, RELIC | 18.9 | 1,405 | 493 | 2,036 |
 | | CudaPFE, GPU | 0.32 | 2.5 | 1.9 | 9.9 |
 | | **Speedup** | **59×** | **566×** | **265×** | **207×** |
 | Kim et al., n = 1,000 | LibPFE, RELIC | 88,051 | 203 | 110 | 207 |
@@ -64,9 +64,9 @@ against 4,168 ms (34×). Two profiling fixes, timed on Baltico et al. decrypting
 | Kim et al. | `IPFE::KIM` | generic group model | [SCN 2018](https://doi.org/10.1007/978-3-319-98113-0_29) |
 | Lin | `IPFE::LIN` | SXDH | [CRYPTO 2017](https://doi.org/10.1007/978-3-319-63688-7_20) |
 | Kim, Kim and Seo | `IPFE::KKS` | SXDH | [TCS 2019](https://doi.org/10.1016/j.tcs.2019.03.016) |
-| Ojaswi et al. | `IPFE::OPT` | generic group model | [CiC 2025](https://doi.org/10.62056/abe0zo-3y) |
+| Acharya et al. | `IPFE::OPT` | generic group model | [CiC 2025](https://doi.org/10.62056/abe0zo-3y) |
 | Baltico et al. | `QFE::BCFG` | adaptive, generic group model | [CRYPTO 2017](https://doi.org/10.1007/978-3-319-63688-7_3) |
-| Dufour-Sans et al. | `QFE::SGP` | generic group model | [NeurIPS 2019](https://proceedings.neurips.cc/paper_files/paper/2019/hash/9d28de8ff9bb6a3fa41fddfdc28f3bc1-Abstract.html) |
+| Ryffel et al. | `QFE::SGP` | generic group model | [NeurIPS 2019](https://proceedings.neurips.cc/paper_files/paper/2019/hash/9d28de8ff9bb6a3fa41fddfdc28f3bc1-Abstract.html) |
 
 `IPFE` keys for y decrypt ciphertexts of x to ⟨x, y⟩ with function hiding; `QFE` keys for F decrypt (x, y) to xᵀFy.
 Each scheme is one header in `include/cudapfe/fe/`, templated on the engine (`setup<Gpu>(n)` or `setup<Cpu>(n)`);
