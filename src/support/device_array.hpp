@@ -3,7 +3,6 @@
 
 #include <cstddef>
 #include <span>
-#include <string>
 #include <utility>
 #include <vector>
 #include "support/runtime.hpp"
@@ -42,10 +41,6 @@ namespace cudapfe::detail{
         [[nodiscard]] std::size_t size() const{ return size_; }
 
         void copy_from(const std::span<const T> source){
-            if (source.size() != size_){
-                throw ShapeError("DeviceArray of " + std::to_string(size_) + " elements cannot take "
-                    + std::to_string(source.size()));
-            }
             if (size_ == 0) return;
             check(cudaMemcpyAsync(data_, source.data(), size_ * sizeof(T), cudaMemcpyHostToDevice, stream_),
                 "cudaMemcpyAsync to device");
