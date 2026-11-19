@@ -25,7 +25,7 @@ namespace cudapfe{
         const auto q_affine = detail::to_elements<G2>(qs);
 
         auto product = detail::Fp12::one();
-        std::vector<detail::Line> lines(kPairsPerMillerLoop * detail::kLineCount);
+        std::vector<detail::Line> lines(std::min(kPairsPerMillerLoop, ps.size()) * detail::kLineCount);
         for (std::size_t first = 0; first < ps.size(); first += kPairsPerMillerLoop){
             const auto count = std::min(kPairsPerMillerLoop, ps.size() - first);
             for (std::size_t k = 0; k < count; ++k){

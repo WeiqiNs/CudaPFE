@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <concepts>
 #include <cstddef>
 #include <memory>
@@ -90,8 +91,17 @@ namespace cudapfe{
             return {qs, std::move(lines)};
         }
 
+        struct CopyOp{
+            const Fp12* in;
+            Fp12* out;
+
+            CUDAPFE_HD void operator()(const std::size_t i) const{ out[i] = in[i]; }
+        };
+
         template <Engine E>
-        Buffer<Fp12, E> miller_products(const Vec<G1, E>& ps, const LineStorage<E>& qs, const PairShape& shape){
+        Buffer<Fp12, E> miller_products(
+            const detail::G1Affine* ps, const detail::G2Affine* qs, const detail::Line* lines, const PairShape& shape
+        ){
             const auto cap = std::same_as<E, Cpu> ? shape.length : detail::kMaxPairsPerItem;
             const auto threads = detail::resident_threads<E, MillerItemOp>();
             const detail::Chunks items{
@@ -99,8 +109,7 @@ namespace cudapfe{
             };
             Buffer<Fp12, E> products(items.count());
             const MillerItemOp op{
-                items, detail::layout(shape, shape.p), detail::layout(shape, shape.q), data(ps), data(qs.sources),
-                qs.lines.data(), products.data()
+                items, detail::layout(shape, shape.p), detail::layout(shape, shape.q), ps, qs, lines, products.data()
             };
             detail::for_each<E>(items.count(), op);
             const detail::Chunks level{shape.segments, items.per_segment(), detail::kReduceFanIn};
@@ -113,14 +122,18 @@ namespace cudapfe{
         }
 
         template <Engine E>
-        Vec<Gt, E> pair_prepared(const Vec<G1, E>& ps, const LineStorage<E>& qs, const PairShape& shape){
-            const auto products = miller_products<E>(ps, qs, shape);
+        Vec<Gt, E> finish_pairing(const Buffer<Fp12, E>& products, const PairShape& shape){
             if constexpr (std::same_as<E, Gpu>){
                 if (detail::place(shape) == detail::Placement::host_final_exp){
                     return final_exps<Cpu>(detail::to_host(products)).template to<Gpu>();
                 }
             }
             return final_exps<E>(products);
+        }
+
+        template <Engine E>
+        Vec<Gt, E> pair_prepared(const Vec<G1, E>& ps, const LineStorage<E>& qs, const PairShape& shape){
+            return finish_pairing<E>(miller_products<E>(data(ps), data(qs.sources), qs.lines.data(), shape), shape);
         }
 
         Vec<Gt, Gpu> pair_on_host(const Vec<G1, Gpu>& ps, const LineStorage<Cpu>& qs, const PairShape& shape){
@@ -171,7 +184,32 @@ namespace cudapfe{
                 return pair_on_host(ps, prepare_storage(qs.template to<Cpu>()), shape);
             }
         }
-        return pair_prepared(ps, prepare_storage(qs), shape);
+        constexpr auto q_bytes = detail::kLineCount * sizeof(detail::Line);
+        const auto chunk = detail::segments_per_line_chunk(shape, q_bytes, detail::kLineBudgetBytes);
+        return detail::pair_in_chunks(ps, qs, shape, chunk);
+    }
+
+    template <Engine E>
+    Vec<Gt, E> detail::pair_in_chunks(
+        const Vec<G1, E>& ps, const Vec<G2, E>& qs, const PairShape& shape, const std::size_t chunk_segments
+    ){
+        if (shape.q == Spread::shared || chunk_segments == 0 || chunk_segments >= shape.segments){
+            return pair_prepared(ps, prepare_storage(qs), shape);
+        }
+        // Each chunk's lines and Miller products are freed (stream-ordered) before the next chunk allocates its own,
+        // so peak memory follows the chunk, not the shape. Per-segment results are independent of the split.
+        Buffer<Fp12, E> products(shape.segments);
+        const auto p_layout = layout(shape, shape.p);
+        for (std::size_t first = 0; first < shape.segments; first += chunk_segments){
+            const PairShape part{std::min(chunk_segments, shape.segments - first), shape.length, shape.p, shape.q};
+            const auto q_count = part.segments * part.length;
+            const auto* q = data(qs) + first * shape.length;
+            Buffer<Line, E> lines(q_count * kLineCount);
+            for_each<E>(q_count, PrepareLinesOp{q, lines.data()});
+            const auto part_products = miller_products<E>(data(ps) + p_layout.offset(first), q, lines.data(), part);
+            for_each<E>(part.segments, CopyOp{part_products.data(), products.data() + first});
+        }
+        return finish_pairing<E>(products, shape);
     }
 
     template class G2Lines<Cpu>;
@@ -182,4 +220,8 @@ namespace cudapfe{
     template Vec<Gt, Gpu> pair_segments(const Vec<G1, Gpu>&, const G2Lines<Gpu>&, const PairShape&);
     template Vec<Gt, Cpu> pair_segments(const Vec<G1, Cpu>&, const Vec<G2, Cpu>&, const PairShape&);
     template Vec<Gt, Gpu> pair_segments(const Vec<G1, Gpu>&, const Vec<G2, Gpu>&, const PairShape&);
+    template Vec<Gt, Cpu> detail::pair_in_chunks(
+        const Vec<G1, Cpu>&, const Vec<G2, Cpu>&, const PairShape&, std::size_t);
+    template Vec<Gt, Gpu> detail::pair_in_chunks(
+        const Vec<G1, Gpu>&, const Vec<G2, Gpu>&, const PairShape&, std::size_t);
 }

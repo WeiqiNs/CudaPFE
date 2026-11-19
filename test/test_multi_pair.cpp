@@ -115,6 +115,20 @@ TYPED_TEST(MultiPairTest, PreparedLinesAreReusable){
     }
 }
 
+TYPED_TEST(MultiPairTest, ChunkedSegmentsMatchHostMultiPairing){
+    const std::vector<PairShape> shapes{{10, 7}, {10, 7, Spread::shared, Spread::per_segment}};
+    for (const auto& shape : shapes){
+        const auto pairs = random_pairs(shape);
+        const auto expected = host_segments(pairs, shape);
+        const auto ps = Vec<G1, TypeParam>::upload(pairs.ps);
+        const auto qs = Vec<G2, TypeParam>::upload(pairs.qs);
+        for (const std::size_t chunk : {std::size_t{1}, std::size_t{3}, std::size_t{9}, std::size_t{10}}){
+            EXPECT_EQ(detail::pair_in_chunks(ps, qs, shape, chunk).download(), expected)
+                << shape.segments << "x" << shape.length << " in chunks of " << chunk;
+        }
+    }
+}
+
 TYPED_TEST(MultiPairTest, RejectsMismatchedShapes){
     constexpr auto shared = Spread::shared;
     constexpr auto per_segment = Spread::per_segment;
