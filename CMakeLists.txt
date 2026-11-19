@@ -48,6 +48,10 @@ add_library(cudapfe_core STATIC
         src/pairing/multi_pair.cu
         src/pairing/pair.cu
         src/support/runtime.cu
+        src/vec/msm_g1.cu
+        src/vec/msm_g2.cu
+        src/vec/mul_generator.cu
+        src/vec/scaled.cu
         src/vec/vec.cu
 )
 add_library(CudaPFE::core ALIAS cudapfe_core)
