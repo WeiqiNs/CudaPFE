@@ -10,8 +10,6 @@
 #include "vec/reduction.hpp"
 #include "vec/storage.hpp"
 
-// Jacobian-to-affine plumbing shared by the translation units that produce point vectors (vec.cu, scaled.cu,
-// msm_g1.cu, msm_g2.cu, mul_generator.cu). They are split so that their heavy device code compiles in parallel.
 namespace cudapfe::detail{
     inline constexpr std::size_t kAffineChunk = 8;
 
@@ -48,7 +46,6 @@ namespace cudapfe::detail{
         return normalized<G, E>(points);
     }
 
-    // Defined in scaled.cu for G1 and G2.
     template <class G, Engine E>
     Vec<G, E> scale_points(const Vec<G, E>& points, const Vec<Zp, E>& k);
 }

@@ -1,12 +1,14 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <limits>
 #include <string_view>
 #include <vector>
 #include <gtest/gtest.h>
 #include <cudapfe/cudapfe.hpp>
 #include <support/engines.hpp>
 #include "curve/straus.hpp"
+#include "vec/placement.hpp"
 
 using namespace cudapfe;
 
@@ -99,6 +101,7 @@ TYPED_TEST(MsmTest, SegmentsTakeTheirOwnOrTheSharedBasesAndScalars){
     constexpr std::size_t segments = 3;
     constexpr Shape shape{10, 9};
     constexpr auto entries = shape.rows * shape.cols;
+    ASSERT_FALSE(detail::points_on_host(segments * entries));
     for (const auto& [name, make_scalars] : kScalarMakers){
         for (const auto bases_spread : {Spread::per_segment, Spread::shared}){
             for (const auto scalars_spread : {Spread::per_segment, Spread::shared}){
@@ -136,6 +139,7 @@ TYPED_TEST(MsmTest, ScalarsOfZeroAndBoundaryWidthsSumCorrectly){
     using P = typename TypeParam::Value;
     using E = typename TypeParam::Engine;
     constexpr Shape shape{16, 16};
+    ASSERT_FALSE(detail::points_on_host(shape.rows * shape.cols));
     const auto logs = scalars_with_zeros(shape.rows);
     const auto bases = mul_generator<P>(Vec<Zp, E>::upload(logs));
     for (const std::size_t width : {std::size_t{0}, detail::kStrausMaxBits, detail::kStrausMaxBits + 1}){
@@ -156,6 +160,7 @@ TYPED_TEST(MsmTest, RejectsMismatchedShapes){
         {"scalars without bases", {1, {0, 3}}, 0, 1},
         {"one segment of bases for two", {2, {2, 3}}, 2, 12},
         {"shared scalars for every segment", {2, {2, 3}, Spread::per_segment, Spread::shared}, 4, 12},
+        {"overflowing shape", {1, {2, std::numeric_limits<std::size_t>::max() / 2 + 1}}, 2, 0},
     };
     for (const auto& [name, shape, bases, scalars] : cases){
         const auto points = Vec<P, E>::upload(std::vector<P>(bases));
