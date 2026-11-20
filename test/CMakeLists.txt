@@ -18,11 +18,7 @@ function(cudapfe_add_test name source)
     if (arg_INTERNAL)
         target_link_libraries(${name} PRIVATE cudapfe_internal)
     endif ()
-    # TODO(cmake>=4.4): restore the closing "\\]" once CMake fixes GoogleTestAddTests.cmake. Since 4.4.0 it wraps each
-    # TEST_PROPERTIES value in [[...]] unescaped, so a value ending in "]" closes the bracket early and every generated
-    # *_tests.cmake fails to parse (ctest: "Syntax Error in cmake code at column 50"). gtest prints "[  SKIPPED ]",
-    # so the prefix alone matches the same lines. Still present in CMake 4.5.0 and master as of 2026-11-19.
-    gtest_discover_tests(${name} DISCOVERY_MODE PRE_TEST PROPERTIES SKIP_REGULAR_EXPRESSION "\\[  SKIPPED" TIMEOUT 300)
+    gtest_discover_tests(${name} DISCOVERY_MODE PRE_TEST PROPERTIES SKIP_REGULAR_EXPRESSION "SKIPPED \\] " TIMEOUT 300)
 endfunction()
 
 cudapfe_add_test(test_toolchain internal/test_toolchain.cu INTERNAL)
