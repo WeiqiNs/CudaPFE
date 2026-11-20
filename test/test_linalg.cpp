@@ -82,7 +82,8 @@ TYPED_TEST(MatrixTest, InverseAndDeterminantUseRowSwaps){
 TYPED_TEST(MatrixTest, SingularAndNonSquareAreRejected){
     using M = Matrix<TypeParam>;
     const auto late_singular = matrix<TypeParam>({{0, 1, 1}, {1, 0, 0}, {1, 1, 1}});
-    for (const auto& singular : {matrix<TypeParam>({{1, 2}, {2, 4}}), late_singular}){
+    const auto first_singular = matrix<TypeParam>({{0, 1}, {0, 2}});
+    for (const auto& singular : {matrix<TypeParam>({{1, 2}, {2, 4}}), late_singular, first_singular}){
         EXPECT_TRUE(singular.determinant().is_zero());
         EXPECT_THROW((void)singular.inverse(), NotInvertible);
         EXPECT_THROW((void)singular.inverse_with_determinant(), NotInvertible);

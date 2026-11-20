@@ -101,6 +101,17 @@ TYPED_TEST(FieldTest, CanonicalRoundTrips){
     }
 }
 
+TYPED_TEST(FieldTest, EqualityComparesEveryLimb){
+    using F = Field<TypeParam>;
+    const auto x = field_samples<TypeParam>(1).back();
+    for (std::size_t i = 0; i < F::N; ++i){
+        auto words = x.montgomery();
+        words[i] ^= 1;
+        EXPECT_FALSE(x == F::from_montgomery(words)) << i;
+    }
+    EXPECT_TRUE(x == F::from_montgomery(x.montgomery()));
+}
+
 TYPED_TEST(FieldTest, DeviceMatchesHost){
     CUDAPFE_REQUIRE_GPU();
     using F = Field<TypeParam>;

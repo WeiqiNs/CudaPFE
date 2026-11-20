@@ -68,6 +68,5 @@ TEST(PlanTest, LineChunksFitTheBudget){
     EXPECT_EQ(segments_per_line_chunk({50, 7}, q_bytes, 7 * q_bytes * 12), 10u);
     EXPECT_EQ(segments_per_line_chunk({50, 7}, q_bytes, 7 * q_bytes * 49), 25u);
     EXPECT_EQ(segments_per_line_chunk({50, 7}, q_bytes, kLineBudgetBytes), 50u);
-    EXPECT_EQ(segments_per_line_chunk({50, 7, Spread::per_segment, Spread::shared}, q_bytes, 1), 50u);
-    EXPECT_EQ(segments_per_line_chunk({50, 0}, q_bytes, 1), 50u);
+    EXPECT_EQ(segments_per_line_chunk({0, 7}, q_bytes, 1), 0u);
 }

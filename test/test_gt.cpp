@@ -75,6 +75,7 @@ TEST(GtTest, PowAcceptsNegativeExponents){
     const auto g = Gt::generator();
 
     EXPECT_EQ(g.pow(-1), g.inverse());
+    EXPECT_EQ(g.pow(1), g);
     EXPECT_EQ(g.pow(3), g * g * g);
     EXPECT_TRUE(g.pow(0).is_one());
 }
@@ -92,6 +93,9 @@ TEST(GtTest, DecodingRejectsInvalidEncodings){
 
     EXPECT_THROW((void)Gt::from_bytes(Bytes(valid.size(), 0xFF)), DecodeError);
     EXPECT_THROW((void)Gt::from_bytes(ByteView(valid).first(valid.size() - 1)), DecodeError);
+    auto long_by_one = valid;
+    long_by_one.push_back(0);
+    EXPECT_THROW((void)Gt::from_bytes(long_by_one), DecodeError);
 }
 
 TEST(GtTest, DecodingAgreesWithBlstInGroup){

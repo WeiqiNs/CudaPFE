@@ -41,7 +41,6 @@ namespace cudapfe::detail{
         std::size_t* pivots;
 
         CUDAPFE_HD void operator()(std::size_t) const{
-            if (state->singular) return;
             const auto m = work.size;
             auto row = column;
             while (row < m && work.at(row, column).is_zero()) ++row;
@@ -117,14 +116,13 @@ namespace cudapfe::detail{
     };
 
     struct ExtractOp{
-        const Fr* work;
-        std::size_t size;
+        Workspace work;
         const std::size_t* columns;
         Fr* out;
 
         CUDAPFE_HD void operator()(const std::size_t t) const{
-            const auto row = t / size;
-            out[t] = work[row * 2 * size + size + columns[t % size]];
+            const auto m = work.size;
+            out[t] = work.at(t / m, m + columns[t % m]);
         }
     };
 }

@@ -178,10 +178,10 @@ namespace cudapfe{
 
         void sort_segments(BsgsTables<Cpu>& tables, const std::size_t entries){
             const auto width = tables.steps.baby;
-            const auto threads = std::min(entries >= 2 ? static_cast<std::size_t>(omp_get_max_threads()) : 1, entries);
+            const auto threads = std::min(static_cast<std::size_t>(omp_get_max_threads()), entries);
             std::vector<std::vector<std::pair<std::uint64_t, std::uint32_t>>> segments(threads);
             for (auto& segment : segments) segment.resize(width);
-#pragma omp parallel for num_threads(static_cast<int>(std::max<std::size_t>(threads, 1)))
+#pragma omp parallel for num_threads(static_cast<int>(threads))
             for (std::size_t e = 0; e < entries; ++e){
                 auto& segment = segments[static_cast<std::size_t>(omp_get_thread_num())];
                 const auto offset = e * width;

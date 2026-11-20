@@ -105,7 +105,7 @@ namespace cudapfe{
             Buffer<std::size_t, E> columns(m);
             detail::for_each<E>(1, detail::ColumnOrderOp{pivots.data(), m, columns.data()});
             Buffer<Fr, E> inverse(m * m);
-            detail::for_each<E>(inverse.size(), detail::ExtractOp{work.data(), m, columns.data(), inverse.data()});
+            detail::for_each<E>(inverse.size(), detail::ExtractOp{workspace, columns.data(), inverse.data()});
 
             const auto result = detail::element_at(state, 0);
             const auto determinant = detail::from_element<Zp>(result.determinant);
