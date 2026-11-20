@@ -68,10 +68,6 @@ namespace cudapfe::detail{
     }
 
     CUDAPFE_HD void prepare_lines(const G2Affine& q, Line* out){
-        if (q.is_identity()){
-            for (std::size_t step = 0; step < kLineCount; ++step) out[step] = Line::zero();
-            return;
-        }
         constexpr auto schedule = kMillerSchedule;
         G2Jacobian t{q.x, q.y, Fp2::one()};
 #pragma unroll 1

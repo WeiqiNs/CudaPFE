@@ -28,7 +28,6 @@ namespace cudapfe::detail{
     [[nodiscard]] constexpr std::size_t segments_per_line_chunk(
         const PairShape& shape, const std::size_t q_bytes, const std::size_t budget
     ){
-        if (shape.q == Spread::shared || shape.length == 0) return shape.segments;
         const auto fit = std::max<std::size_t>(budget / (shape.length * q_bytes), 1);
         if (fit >= shape.segments) return shape.segments;
         return ceil_div(shape.segments, ceil_div(shape.segments, fit));
