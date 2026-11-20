@@ -75,7 +75,8 @@ device's `CMAKE_CUDA_ARCHITECTURES` makes `GpuRuntime` throw a `DeviceError` nam
   calls in ops. Pinned by the `DeviceMatchesHost` and `...MatchesBlst` cases under `test/internal/`.
 - `third_party/sppark` stays byte-identical to upstream so it can be refreshed with the blst pin: on the host its
   `ff/bls12-381.hpp` includes blst's `blst_t.hpp`. `FieldTest.ConstantsMatchVendoredSppark` pins
-  `src/field/constants.hpp` to it. blst also backs `Zp::random`/`seed` and is the tests' oracle.
+  `kP` and `kR` to it; the other constants in `src/field/constants.hpp` are pinned by the blst comparisons. blst
+  also backs `Zp::random`/`seed` and is the tests' oracle.
 - `Gpu` work runs on one process-wide non-blocking stream (`GpuRuntime::require()`, `src/support/runtime.cu`), and
   `finish<E>()` synchronizes it, so calls never overlap. Keys, `G2Lines` and `DlogTable` are immutable and shared
   across threads; `test/fe/test_concurrency.cpp` pins this.
