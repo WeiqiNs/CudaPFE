@@ -66,10 +66,11 @@ device's `CMAKE_CUDA_ARCHITECTURES` makes `GpuRuntime` throw a `DeviceError` nam
   per-segment results do not depend on the split, which `detail::pair_in_chunks` exposes so tests can force chunking
   far below the budget.
 - Schemes build exponents as host `Vector`s or `Matrix<E>` products, lift them with `mul_generator`
-  (`IPFE::detail::lift`), and decrypt via `pair_segments` and a `DlogTable`/`DlogTables` lookup. A new scheme needs its
-  header, an adapter in `test/fe/schemes.hpp`, an entry in `InnerProductSchemes` or `QuadraticSchemes`
-  (`test/fe/scheme_types.hpp`, feeding `test_ipfe`, `test_qfe`, `test_concurrency`), and a `footprint<>` plus `table<>`
-  entry in `bench/bench_fe.cpp`.
+  (`IPFE::detail::lift`), and decrypt via `pair_segments` and a `DlogTable`/`DlogTables` lookup. `QFE::BCFG::dec`'s G2
+  side holds only ciphertext and public-key points, so with one ciphertext it is built once and shared by every key. A
+  new scheme needs its header, an adapter in `test/fe/schemes.hpp`, an entry in `InnerProductSchemes` or
+  `QuadraticSchemes` (`test/fe/scheme_types.hpp`, feeding `test_ipfe`, `test_qfe`, `test_concurrency`), and a
+  `footprint<>` plus `table<>` entry in `bench/bench_fe.cpp`.
 
 ## Design facts
 

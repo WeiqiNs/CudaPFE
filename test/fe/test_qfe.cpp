@@ -1,6 +1,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <optional>
+#include <type_traits>
 #include <vector>
 #include <gtest/gtest.h>
 #include "scheme_types.hpp"
@@ -92,6 +93,22 @@ TYPED_TEST(QuadraticTest, RejectsInputsOfTheWrongShape){
     EXPECT_THROW((void)enc(keys.pk, IntVec{1, 2}, IntVec{1, 2, 3}), cudapfe::ShapeError);
     EXPECT_THROW((void)enc(keys.pk, IntVec{1, 2, 3}, IntVec{1, 2, 3, 4}), cudapfe::ShapeError);
     EXPECT_THROW((void)enc(keys.pk, IntMatrix{{1, 2, 3}, {4, 5, 6}}, IntMatrix{{1, 2, 3}}), cudapfe::ShapeError);
+}
+
+TYPED_TEST(QuadraticTest, RejectsCiphertextsMissingAPoint){
+    const auto keys = TypeParam::setup(3);
+    const auto decrypt = TypeParam::decryptor(keys, kRange);
+    const auto sk = keygen(keys.msk, IntMatrix{{1, 0, 2}, {0, -1, 0}, {3, 1, 1}});
+    auto ct = enc(keys.pk, IntVec{1, -2, 3}, IntVec{4, 5, -6});
+    auto& bilinear_g2 = [](auto& c) -> auto&{
+        if constexpr (requires{ c.d; }) return c.d;
+        else return c.b0;
+    }(ct);
+    auto points = bilinear_g2.download();
+    points.pop_back();
+    bilinear_g2 = std::remove_cvref_t<decltype(bilinear_g2)>::upload(points);
+
+    EXPECT_THROW((void)decrypt(sk, ct), cudapfe::ShapeError);
 }
 
 TYPED_TEST(QuadraticTest, RejectsIncompatibleBatchCounts){
