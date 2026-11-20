@@ -6,6 +6,7 @@
 #include <gtest/gtest.h>
 #include <cudapfe/cudapfe.hpp>
 #include <support/engines.hpp>
+#include "curve/straus.hpp"
 
 using namespace cudapfe;
 
@@ -137,7 +138,7 @@ TYPED_TEST(MsmTest, ScalarsOfZeroAndBoundaryWidthsSumCorrectly){
     constexpr Shape shape{16, 16};
     const auto logs = scalars_with_zeros(shape.rows);
     const auto bases = mul_generator<P>(Vec<Zp, E>::upload(logs));
-    for (const std::size_t width : {0, 32, 33}){
+    for (const std::size_t width : {std::size_t{0}, detail::kStrausMaxBits, detail::kStrausMaxBits + 1}){
         const auto f = scalars_of_width(shape.rows * shape.cols, width);
 
         EXPECT_EQ(msm(bases, Vec<Zp, E>::upload(f), {1, shape}).download(), exponent_columns<P>(logs, f, shape))

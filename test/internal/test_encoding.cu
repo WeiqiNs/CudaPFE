@@ -23,6 +23,7 @@ namespace{
         std::string_view defect;
         Bytes bytes;
         bool blst_has_this_view;
+        std::string_view reason = {};
     };
 
     template <class P>
@@ -95,7 +96,7 @@ namespace{
             {"x coordinate equal to p", x_is_p, true},
             {"y coordinate equal to p", y_is_p, true},
             {"compressed x with no curve point", first_x_off_the_curve<F>(), true},
-            {"uncompressed point off the curve", off_curve, true},
+            {"uncompressed point off the curve", off_curve, true, "not a curve point"},
             {"point outside the subgroup", encode(first_point_outside_subgroup<F>(), Encoding::compressed), true},
         };
     }
@@ -132,7 +133,12 @@ TYPED_TEST(EncodingTest, MatchesBlst){
 TYPED_TEST(EncodingTest, RejectsMalformedEncodings){
     using F = TypeParam;
     for (const auto& row : malformed_encodings<F>()){
-        EXPECT_THROW((void)decode<F>(row.bytes), DecodeError) << row.defect;
+        try{
+            (void)decode<F>(row.bytes);
+            ADD_FAILURE() << row.defect << " decoded";
+        } catch (const DecodeError& error){
+            EXPECT_NE(std::string_view(error.what()).find(row.reason), std::string_view::npos) << row.defect;
+        }
         if (row.blst_has_this_view) EXPECT_TRUE(blst_rejects<F>(row.bytes)) << row.defect;
     }
 }

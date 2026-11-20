@@ -84,9 +84,9 @@ device's `CMAKE_CUDA_ARCHITECTURES` makes `GpuRuntime` throw a `DeviceError` nam
   (`src/vec/placement.hpp`), pairings per `detail::place` (`src/pairing/plan.hpp`), all from the
   `CUDAPFE_HOST_*_BELOW` cache variables. Tests that must reach the device size shapes from these constants and assert
   the placement (`MultiPairTest.EveryPlacementAgrees`, `ConcurrentDeviceTest.*`); `PlanTest` pins `place`.
-- Kernels select on data without warp-divergent branches (`signed_scalar`, `straus_sum`; README "Performance" has the
-  measurements). `MsmTest.ScalarsOfZeroAndBoundaryWidthsSumCorrectly` hard-codes the widths at and just past
-  `kStrausMaxBits`, and `cudapfe_bench`'s "Single MSM by scalar width" table measures that crossover.
+- Kernels select a scalar's sign without a warp-divergent branch (`signed_scalar`, the sign select in `straus_sum`;
+  README "Performance" has the measurements). `MsmTest.ScalarsOfZeroAndBoundaryWidthsSumCorrectly` takes the widths at
+  and just past `kStrausMaxBits`, and `cudapfe_bench`'s "Single MSM by scalar width" table measures that crossover.
 
 ## Tests and CI
 
