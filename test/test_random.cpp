@@ -14,9 +14,10 @@ TEST(RandomTest, SeedMakesTheRandomSequenceReproducible){
 
     EXPECT_EQ(first.front().to_string(),
         "49265352440565724334159615326942584270622586368201043137340289674815210787403");
+    EXPECT_EQ(first.back().to_string(),
+        "30295430901326429246751547346519921365681185938484466553222178549211655845042");
     EXPECT_EQ(first, again);
     EXPECT_NE(first, other);
-    EXPECT_NE(first.front(), first.back());
     EXPECT_THROW(seed(Bytes{}), ShapeError);
 }
 

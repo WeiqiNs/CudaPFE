@@ -209,6 +209,11 @@ TYPED_TEST(CurveTest, EdgeCasesFollowTheGroupLaw){
     EXPECT_TRUE(equal(mul(p, r_minus_one), neg(p)));
     EXPECT_TRUE(mul(p, kR).is_identity());
     EXPECT_FALSE(equal(p, identity));
+    EXPECT_FALSE(equal(p, neg(p)));
+    const auto z = Fr::from_canonical({kZ});
+    const auto same_y = mul(p, -(z * z));
+    ASSERT_EQ(to_affine(same_y).y, to_affine(p).y);
+    EXPECT_FALSE(equal(p, same_y));
     EXPECT_EQ(CurveParams<F>::generator(), blst_affine<F>(*CurveOracle<F>::generator()));
 }
 

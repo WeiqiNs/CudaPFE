@@ -1,5 +1,6 @@
 #include <array>
 #include <cstddef>
+#include <string_view>
 #include <vector>
 #include <support/engines.hpp>
 #include "support/device_array.hpp"
@@ -54,7 +55,12 @@ TYPED_TEST(ForEachTest, VisitsEveryIndexExactlyOnce){
 }
 
 TEST(ForEachTest, OverflowingTheGridIsADeviceError){
-    EXPECT_THROW(for_each<Gpu>(32 * kMaxBlocks + 1, AddIndexHashInWarps{{nullptr}}), DeviceError);
+    try{
+        for_each<Gpu>(32 * kMaxBlocks + 1, AddIndexHashInWarps{{nullptr}});
+        ADD_FAILURE() << "launched past the grid";
+    } catch (const DeviceError& error){
+        EXPECT_NE(std::string_view(error.what()).find("exceeds the grid"), std::string_view::npos) << error.what();
+    }
 }
 
 TEST(DeviceArrayTest, AllocationFailureIsADeviceError){

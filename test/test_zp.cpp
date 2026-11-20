@@ -74,4 +74,7 @@ TEST(ZpTest, EncodingIsFixedWidthBigEndianAndValidated){
 
     const Bytes short_by_one(largest.begin() + 1, largest.end());
     EXPECT_THROW((void)Zp::from_bytes(short_by_one), DecodeError);
+    auto long_by_one = bytes;
+    long_by_one.push_back(0);
+    EXPECT_THROW((void)Zp::from_bytes(long_by_one), DecodeError);
 }

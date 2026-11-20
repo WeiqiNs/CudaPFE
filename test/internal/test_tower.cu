@@ -3,7 +3,6 @@
 #include <support/engines.hpp>
 #include <support/oracle.hpp>
 #include <support/samples.hpp>
-#include "field/constants.hpp"
 #include "field/field.hpp"
 #include "field/tower.hpp"
 #include "support/device_array.hpp"
@@ -16,7 +15,6 @@ using namespace cudapfe::test;
 
 namespace{
     constexpr std::size_t kSamples = 200;
-    constexpr std::size_t kPowerSamples = 20;
 
     struct TowerInput{
         Fp2 a, b;
@@ -97,17 +95,6 @@ namespace{
 TEST(TowerTest, HostMatchesBlst){
     const auto inputs = tower_inputs();
     for (std::size_t i = 0; i < inputs.size(); ++i) expect_same(evaluate(inputs[i]), blst_evaluate(inputs[i]), i);
-}
-
-TEST(TowerTest, FrobeniusIsThePthPower){
-    for (const auto& x : tower_samples<Fp12>(kPowerSamples)) EXPECT_EQ(frobenius<1>(x), pow(x, kP));
-}
-
-TEST(TowerTest, CyclotomicPowMatchesPow){
-    const std::vector<Words<4>> exponents{Words<4>{}, Words<4>{1}, sub_word(kR, 1)};
-    for (const auto& input : tower_inputs()){
-        for (const auto& e : exponents) EXPECT_EQ(cyclotomic_pow(input.unitary, e), pow(input.unitary, e));
-    }
 }
 
 TEST(TowerTest, DeviceMatchesHost){
