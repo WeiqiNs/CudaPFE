@@ -8,9 +8,12 @@ user-facing overview and holds the scheme table.
 
 ## Commands
 
+Linux, CMake 3.25+, a C++20 compiler with OpenMP, the CUDA toolkit (13.x; CI uses the `nvidia/cuda:13.4.2-devel`
+image), Ninja and git (configure fetches dependencies).
+
 ```bash
 cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_CUDA_COMPILER=/usr/local/cuda/bin/nvcc -DCUDAPFE_BUILD_BENCH=ON
-cmake --build build                            # minutes; test_curve.cu, msm_g2.cu and scaled.cu dominate
+cmake --build build                            # minutes; the .cu translation units dominate
 ctest --test-dir build --output-on-failure     # Gpu cases report "Skipped" without a usable device
 ctest --test-dir build -R MsmTest              # or ./build/test/test_msm --gtest_filter='MsmTest/*'
 ./build/bench/cudapfe_bench --quick            # pairing, fixed-base, matrix, dlog, MSM tables vs blst
@@ -20,17 +23,19 @@ cmake --install build --prefix /tmp/cudapfe    # then, as CI does:
 cmake -S demo -B demo/build -G Ninja -DCMAKE_PREFIX_PATH=/tmp/cudapfe && cmake --build demo/build && ./demo/build/demo
 ```
 
-Both benchmarks exit early without a GPU; ctest names carry the engine type (`...<cudapfe::Gpu>`). Configure fetches
+Both benchmarks exit early without a GPU; typed ctest names carry the engine type (`cudapfe::Gpu`). Configure fetches
 blst (`CUDAPFE_BLST_GIT_TAG`, `cmake/CudaPFEDependencies.cmake`) and, absent a system copy, GoogleTest. Options are the
 cache variables at the top of `CMakeLists.txt`; `CUDAPFE_PTXAS_VERBOSE=ON` prints per-kernel registers and spills
-(`cuobjdump --dump-resource-usage build/libcudapfe_core.a` reads them from a built library). A build lacking the
-device's `CMAKE_CUDA_ARCHITECTURES` makes `GpuRuntime` throw a `DeviceError` naming the value to configure.
+(`cuobjdump --dump-resource-usage build/libcudapfe_core.a` reads them from a built library). Device code is built
+only for `CMAKE_CUDA_ARCHITECTURES` (default `120`); on a device it does not cover, `GpuRuntime` throws a
+`DeviceError` naming the value to configure, so `gpu_available()` is false and Gpu tests skip.
 
 ## Layout
 
-- `include/cudapfe/`: public API. `core.hpp` (host values `Zp`, `G1`/`G2`, `Gt`, single `pair`), `engine.hpp`,
-  `vec.hpp` (`Vec<T, E>`, `mul_generator`, `msm`, `concat`), `pairing.hpp` (`prepare` → `G2Lines`, `pair_segments`),
-  `linalg.hpp` (`Matrix<E>`), `dlog.hpp` (`DlogTable`, `DlogTables`), `vector.hpp`, `io.hpp`, `errors.hpp`.
+- `include/cudapfe/`: public API, all pulled in by `cudapfe.hpp`. `core.hpp` (host values `Zp`, `G1`/`G2`, `Gt`,
+  single `pair`), `engine.hpp`, `vec.hpp` (`Vec<T, E>`, `mul_generator`, `msm`, `concat`), `pairing.hpp`
+  (`prepare` → `G2Lines`, `pair_segments`), `linalg.hpp` (`Matrix<E>`), `dlog.hpp` (`DlogTable`, `DlogTables`),
+  `vector.hpp`, `io.hpp`, `errors.hpp`.
 - `include/cudapfe/fe/`: header-only schemes, one per file; shared helpers in `ipfe.hpp` and `qfe.hpp`.
 - `src/field/` (`Fp`, `Fr`, tower to `Fp12`, constants, SHA-256 counter RNG in `random.cpp`), `src/curve/` (affine and
   Jacobian arithmetic, `SignedScalar`, `straus_sum`, generator table, encoding), `src/pairing/` (Miller loop, final
@@ -40,7 +45,8 @@ device's `CMAKE_CUDA_ARCHITECTURES` makes `GpuRuntime` throw a `DeviceError` nam
   `src/linalg/` (Gauss-Jordan), `src/dlog/` (baby-step giant-step), `src/support/` (`for_each`, `GpuRuntime`,
   `DeviceArray`, `Access`, `CUDAPFE_HD`).
 - `third_party/sppark/`: sppark's BLS12-381 field headers. `test/`: `fe/` scheme suites, `internal/` tests of
-  `src/`, `support/` (engine fixtures, blst oracle), public-API suites at the top. `demo/`: installed-package consumer.
+  `src/`, `support/` (engine fixtures, blst oracle), public-API suites at the top (a few, marked `INTERNAL` in
+  `test/CMakeLists.txt`, also read `src/` constants). `bench/`: the two benchmarks. `demo/`: installed-package consumer.
 - Targets: `CudaPFE::core`, `CudaPFE::fe` (interface over core), private `cudapfe_internal` (`src/`, sppark, blst).
 
 ## Data flow and where changes go
@@ -59,12 +65,9 @@ device's `CMAKE_CUDA_ARCHITECTURES` makes `GpuRuntime` throw a `DeviceError` nam
   `mul` plus `reduce_segments`. `pair_segments` chunks each segment over resident threads (at most `kMaxPairsPerItem`
   pairs per Gpu item), reduces the Miller products per segment, then final-exponentiates each. Unprepared, it pairs
   evenly sized chunks of segments (`detail::pair_in_chunks`) when a per-segment G2 side's lines would pass
-  `kLineBudgetBytes` (`src/pairing/plan.hpp`, 2 GiB like `kTableBudgetBytes`; lines take about 19.6 KB per Q). It
-  bounds only that case: a shared G2 side is prepared whole, and a chunk keeps at least one segment however long. Each
-  chunk's lines are freed stream-ordered before the next allocates, so peak memory follows the chunk, and even chunks
-  keep a small trailing chunk from idling the device. `PlanTest.LineChunksFitTheBudget` pins the sizes and
-  `MultiPairTest.ChunkedSegmentsMatchHostMultiPairing` that per-segment results do not depend on the split, which
-  `detail::pair_in_chunks` exposes so tests can force chunking far below the budget.
+  `kLineBudgetBytes` (`src/pairing/plan.hpp`), freeing each chunk's lines before the next allocates. A shared G2 side
+  is prepared whole, and a chunk keeps at least one segment however long. `PlanTest` pins the chunk sizes and
+  `MultiPairTest` that results do not depend on the split.
 - Schemes build exponents as host `Vector`s or `Matrix<E>` products, lift them with `mul_generator`
   (`IPFE::detail::lift`), and decrypt via `pair_segments` and a `DlogTable`/`DlogTables` lookup. `QFE::BCFG::dec`'s G2
   side holds only ciphertext and public-key points, so with one ciphertext it is built once and shared by every key. A
@@ -93,8 +96,8 @@ device's `CMAKE_CUDA_ARCHITECTURES` makes `GpuRuntime` throw a `DeviceError` nam
   (`src/vec/placement.hpp`), pairings per `detail::place` (`src/pairing/plan.hpp`), all from the
   `CUDAPFE_HOST_*_BELOW` cache variables. Internal tests that must reach the device size shapes from these constants
   and assert the placement (`MultiPairTest`, `MsmTest`, `QuadraticTest`, `ConcurrentDeviceTest.*`); `PlanTest` pins
-  `place`. The public `test_vec` and `test_mul_generator` suites use fixed sizes (300 and 875 values) that reach the
-  device only under the default `CUDAPFE_HOST_POINTS_BELOW`.
+  `place`. The public `test_vec` and `test_mul_generator` suites use fixed sizes that reach the device under the
+  default `CUDAPFE_HOST_POINTS_BELOW` but not under a much larger one.
 - Kernels select a scalar's sign without a warp-divergent branch (`signed_scalar`, the sign select in `straus_sum`;
   README "Performance" has the measurements). `MsmTest.ScalarsOfZeroAndBoundaryWidthsSumCorrectly` takes the widths at
   and just past `kStrausMaxBits`, and `cudapfe_bench`'s "Single MSM by scalar width" table measures that crossover.
