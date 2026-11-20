@@ -4,6 +4,7 @@
 #include <type_traits>
 #include <vector>
 #include <gtest/gtest.h>
+#include "pairing/plan.hpp"
 #include "scheme_types.hpp"
 
 using cudapfe::QFE::IntMatrix;
@@ -50,6 +51,23 @@ TYPED_TEST(QuadraticTest, DecryptsOneCiphertextUnderManyKeys){
     };
 
     EXPECT_EQ(decrypt(keygen(keys.msk, functions), ct), (Results{35, -24, -18, std::nullopt}));
+}
+
+TYPED_TEST(QuadraticTest, DecryptsOneCiphertextUnderADeviceSizedKeyBatch){
+    using cudapfe::detail::kHostFinalExpBelow;
+    const std::size_t count = kHostFinalExpBelow;
+    ASSERT_EQ(cudapfe::detail::place({count, 3}), cudapfe::detail::Placement::device);
+    const auto keys = TypeParam::setup(1);
+    const auto decrypt = TypeParam::decryptor(keys, kRange);
+    std::vector<IntMatrix> functions;
+    Results expected;
+    for (std::size_t i = 0; i < count; ++i){
+        const auto f = static_cast<std::int64_t>(i % 11) - 5;
+        functions.push_back({{f}});
+        expected.push_back(f * 7 * 2);
+    }
+
+    EXPECT_EQ(decrypt(keygen(keys.msk, functions), enc(keys.pk, IntVec{7}, IntVec{2})), expected);
 }
 
 TYPED_TEST(QuadraticTest, DecryptsManyCiphertextsUnderOneKey){
