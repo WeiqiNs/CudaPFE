@@ -7,6 +7,7 @@
 #include <span>
 #include <utility>
 #include <vector>
+#include <omp.h>
 #include <cub/device/device_segmented_sort.cuh>
 #include <cuda/atomic>
 #include <cudapfe/core.hpp>
@@ -177,11 +178,12 @@ namespace cudapfe{
 
         void sort_segments(BsgsTables<Cpu>& tables, const std::size_t entries){
             const auto width = tables.steps.baby;
-            // Entries sort independently, so each thread owns whole segments; the result does not depend on how
-            // they are split. One entry (a single DlogTable) stays on one thread.
-#pragma omp parallel for if(entries >= 2)
+            const auto threads = std::min(entries >= 2 ? static_cast<std::size_t>(omp_get_max_threads()) : 1, entries);
+            std::vector<std::vector<std::pair<std::uint64_t, std::uint32_t>>> segments(threads);
+            for (auto& segment : segments) segment.resize(width);
+#pragma omp parallel for num_threads(static_cast<int>(std::max<std::size_t>(threads, 1)))
             for (std::size_t e = 0; e < entries; ++e){
-                std::vector<std::pair<std::uint64_t, std::uint32_t>> segment(width);
+                auto& segment = segments[static_cast<std::size_t>(omp_get_thread_num())];
                 const auto offset = e * width;
                 for (std::size_t j = 0; j < width; ++j){
                     segment[j] = {tables.fingerprints[offset + j], tables.baby_steps[offset + j]};

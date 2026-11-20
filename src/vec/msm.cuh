@@ -1,7 +1,6 @@
 #ifndef CUDAPFE_VEC_MSM_CUH
 #define CUDAPFE_VEC_MSM_CUH
 
-// msm's definition, instantiated per group by msm_g1.cu and msm_g2.cu so the two compile in parallel.
 #include <cstddef>
 #include <vector>
 #include <cudapfe/core.hpp>

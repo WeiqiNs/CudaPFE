@@ -103,7 +103,11 @@ TYPED_TEST(MultiPairTest, SegmentsMatchHostMultiPairing){
 }
 
 TYPED_TEST(MultiPairTest, PreparedLinesAreReusable){
-    const PairShape shape{40, 7, Spread::per_segment, Spread::shared};
+    const PairShape shape{
+        detail::kHostFinalExpBelow, detail::ceil_div(detail::kHostMillerBelow, detail::kHostFinalExpBelow),
+        Spread::per_segment, Spread::shared
+    };
+    ASSERT_EQ(detail::place(shape), detail::Placement::device);
     const auto first = random_pairs(shape);
     Pairs second{points_with_identities<G1>(side_count(shape, shape.p)), first.qs};
     const auto lines = prepare(Vec<G2, TypeParam>::upload(first.qs));

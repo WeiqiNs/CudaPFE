@@ -7,7 +7,6 @@
 #include "vec/points.cuh"
 #include "vec/storage.hpp"
 
-// Vec::scaled's device work, apart from vec.cu so its variable-base multiplication compiles in parallel.
 namespace cudapfe{
     namespace{
         using detail::data;

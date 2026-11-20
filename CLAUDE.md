@@ -59,12 +59,18 @@ device's `CMAKE_CUDA_ARCHITECTURES` makes `GpuRuntime` throw a `DeviceError` nam
   `mul` plus `reduce_segments`. `pair_segments` chunks each segment over resident threads (at most `kMaxPairsPerItem`
   pairs per Gpu item), reduces the Miller products per segment, then final-exponentiates each. Unprepared, it pairs
   evenly sized chunks of segments (`detail::pair_in_chunks`) when a per-segment G2 side's lines would pass
-  `kLineBudgetBytes` (`src/pairing/plan.hpp`); `MultiPairTest.ChunkedSegmentsMatchHostMultiPairing` pins the split.
+  `kLineBudgetBytes` (`src/pairing/plan.hpp`, 2 GiB like `kTableBudgetBytes`; lines take about 19.6 KB per Q). It
+  bounds only that case: a shared G2 side is prepared whole, and a chunk keeps at least one segment however long. Each
+  chunk's lines are freed stream-ordered before the next allocates, so peak memory follows the chunk, and even chunks
+  keep a small trailing chunk from idling the device. `PlanTest.LineChunksFitTheBudget` pins the sizes and
+  `MultiPairTest.ChunkedSegmentsMatchHostMultiPairing` that per-segment results do not depend on the split, which
+  `detail::pair_in_chunks` exposes so tests can force chunking far below the budget.
 - Schemes build exponents as host `Vector`s or `Matrix<E>` products, lift them with `mul_generator`
-  (`IPFE::detail::lift`), and decrypt via `pair_segments` and a `DlogTable`/`DlogTables` lookup. A new scheme needs its
-  header, an adapter in `test/fe/schemes.hpp`, an entry in `InnerProductSchemes` or `QuadraticSchemes`
-  (`test/fe/scheme_types.hpp`, feeding `test_ipfe`, `test_qfe`, `test_concurrency`), and a `footprint<>` plus `table<>`
-  entry in `bench/bench_fe.cpp`.
+  (`IPFE::detail::lift`), and decrypt via `pair_segments` and a `DlogTable`/`DlogTables` lookup. `QFE::BCFG::dec`'s G2
+  side holds only ciphertext and public-key points, so with one ciphertext it is built once and shared by every key. A
+  new scheme needs its header, an adapter in `test/fe/schemes.hpp`, an entry in `InnerProductSchemes` or
+  `QuadraticSchemes` (`test/fe/scheme_types.hpp`, feeding `test_ipfe`, `test_qfe`, `test_concurrency`), and a
+  `footprint<>` plus `table<>` entry in `bench/bench_fe.cpp`.
 
 ## Design facts
 
@@ -72,20 +78,26 @@ device's `CMAKE_CUDA_ARCHITECTURES` makes `GpuRuntime` throw a `DeviceError` nam
   (`src/field/field.hpp`: host `Base` is blst's `blst_t` with 64-bit limbs, device is sppark's `mont_t` with 32-bit
   limbs, and the device inverse is a `pow`) and `MillerItemOp` (`src/pairing/multi_pair.cu`: the device packs pair
   liveness into `MaskedPairs`, sized for `kMaxPairsPerItem`). `-Werror=cross-execution-space-call` rejects host-only
-  calls in ops. Pinned by the `DeviceMatchesHost` and `...MatchesBlst` cases under `test/internal/`.
+  calls in ops. Pinned by the `DeviceMatchesHost` and `...MatchesBlst` cases under `test/internal/`, and for
+  `MillerItemOp` by the Gpu `MultiPairTest` cases that reach the device placement.
 - `third_party/sppark` stays byte-identical to upstream so it can be refreshed with the blst pin: on the host its
   `ff/bls12-381.hpp` includes blst's `blst_t.hpp`. `FieldTest.ConstantsMatchVendoredSppark` pins
-  `src/field/constants.hpp` to it. blst also backs `Zp::random`/`seed` and is the tests' oracle.
+  `kP` and `kR` to it; the other constants in `src/field/constants.hpp` are pinned by the blst comparisons. blst
+  also backs `Zp::random`/`seed` and is the tests' oracle.
 - `Gpu` work runs on one process-wide non-blocking stream (`GpuRuntime::require()`, `src/support/runtime.cu`), and
   `finish<E>()` synchronizes it, so calls never overlap. Keys, `G2Lines` and `DlogTable` are immutable and shared
-  across threads; `test/fe/test_concurrency.cpp` pins this.
+  across threads; `test/fe/test_concurrency.cpp` pins this. `DeviceArray::copy_from` sources may die as soon as it
+  returns (`to_engine` passes a temporary vector): CUDA stages a pageable host-to-device `cudaMemcpyAsync` before
+  returning, so a pinned (`cudaMallocHost`/`cudaHostRegister`) source would instead have to outlive the next sync.
 - Small `Gpu` calls run on the host: point addition, scaling, `mul_generator` and `msm` below `kHostPointsBelow`
   (`src/vec/placement.hpp`), pairings per `detail::place` (`src/pairing/plan.hpp`), all from the
-  `CUDAPFE_HOST_*_BELOW` cache variables. Tests that must reach the device size shapes from these constants and assert
-  the placement (`MultiPairTest.EveryPlacementAgrees`, `ConcurrentDeviceTest.*`); `PlanTest` pins `place`.
-- Kernels select on data without warp-divergent branches (`signed_scalar`, `straus_sum`; README "Performance" has the
-  measurements). `MsmTest.ScalarsOfZeroAndBoundaryWidthsSumCorrectly` hard-codes the widths at and just past
-  `kStrausMaxBits`, and `cudapfe_bench`'s "Single MSM by scalar width" table measures that crossover.
+  `CUDAPFE_HOST_*_BELOW` cache variables. Internal tests that must reach the device size shapes from these constants
+  and assert the placement (`MultiPairTest`, `MsmTest`, `QuadraticTest`, `ConcurrentDeviceTest.*`); `PlanTest` pins
+  `place`. The public `test_vec` and `test_mul_generator` suites use fixed sizes (300 and 875 values) that reach the
+  device only under the default `CUDAPFE_HOST_POINTS_BELOW`.
+- Kernels select a scalar's sign without a warp-divergent branch (`signed_scalar`, the sign select in `straus_sum`;
+  README "Performance" has the measurements). `MsmTest.ScalarsOfZeroAndBoundaryWidthsSumCorrectly` takes the widths at
+  and just past `kStrausMaxBits`, and `cudapfe_bench`'s "Single MSM by scalar width" table measures that crossover.
 
 ## Tests and CI
 

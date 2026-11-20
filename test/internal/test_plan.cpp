@@ -62,15 +62,12 @@ TEST(PlanTest, PlacementUsesThresholds){
 
 TEST(PlanTest, LineChunksFitTheBudget){
     constexpr std::size_t q_bytes = 100;
-    // A per-segment G2 side is split so each chunk's lines fit the budget, keeping at least one segment.
     EXPECT_EQ(segments_per_line_chunk({50, 7}, q_bytes, 7 * q_bytes * 10), 10u);
     EXPECT_EQ(segments_per_line_chunk({50, 7}, q_bytes, 7 * q_bytes * 10 + 1), 10u);
     EXPECT_EQ(segments_per_line_chunk({50, 7}, q_bytes, 1), 1u);
-    // Chunks are even: room for 12 segments still needs 5 chunks for 50, so each takes 10, not 12, 12, 12, 12, 2.
     EXPECT_EQ(segments_per_line_chunk({50, 7}, q_bytes, 7 * q_bytes * 12), 10u);
     EXPECT_EQ(segments_per_line_chunk({50, 7}, q_bytes, 7 * q_bytes * 49), 25u);
     EXPECT_EQ(segments_per_line_chunk({50, 7}, q_bytes, kLineBudgetBytes), 50u);
-    // A shared G2 side is prepared once whatever the segment count, and an empty length needs no lines.
     EXPECT_EQ(segments_per_line_chunk({50, 7, Spread::per_segment, Spread::shared}, q_bytes, 1), 50u);
     EXPECT_EQ(segments_per_line_chunk({50, 0}, q_bytes, 1), 50u);
 }

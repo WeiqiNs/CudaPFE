@@ -52,6 +52,8 @@ TYPED_TEST(PointTest, GeneratorHasTheGroupOrder){
     EXPECT_TRUE(P::mul_generator(Vector{}).empty());
     EXPECT_TRUE(P::mul_generator({}).is_identity());
     EXPECT_EQ(P::mul_generator({x}), P::generator() * x);
+    EXPECT_EQ(sum(std::vector{P::generator(), P::generator() * x}), P::generator() * (x + 1));
+    EXPECT_TRUE(sum(std::vector<P>{}).is_identity());
 }
 
 TYPED_TEST(PointTest, EveryEncodingRoundTrips){

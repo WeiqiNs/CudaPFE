@@ -99,6 +99,16 @@ TYPED_TEST(InnerProductTest, RejectsVectorsOfTheWrongLength){
     EXPECT_THROW((void)enc(msk, IntMatrix{{1, 2, 3, 4}, {1, 2, 3, 4, 5}}), cudapfe::ShapeError);
 }
 
+TYPED_TEST(InnerProductTest, RejectsCiphertextsOfAnotherDimension){
+    const auto msk = TypeParam::setup(4);
+    const auto decrypt = TypeParam::decryptor(msk, kRange);
+    const auto sk = keygen(msk, IntVec{1, -2, 3, 4});
+    const auto ct = enc(TypeParam::setup(3), IntVec{1, 2, 3});
+
+    EXPECT_THROW((void)decrypt(sk, ct), cudapfe::ShapeError);
+    EXPECT_THROW((void)decrypt(prepare(sk), ct), cudapfe::ShapeError);
+}
+
 TYPED_TEST(InnerProductTest, RejectsIncompatibleBatchCounts){
     const auto msk = TypeParam::setup(2);
     const auto decrypt = TypeParam::decryptor(msk, kRange);

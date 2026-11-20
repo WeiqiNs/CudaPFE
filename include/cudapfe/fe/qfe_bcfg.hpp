@@ -114,8 +114,6 @@ namespace cudapfe::QFE::BCFG{
             {-sk.s1, 1, batch.keys},
             {sk.s2, 1, batch.keys},
         });
-        // The G2 side holds only ciphertext and public-key points, so with one ciphertext every segment pairs against
-        // the same points: build them once and share them instead of preparing lines for each key.
         const auto q_segments = batch.ciphertexts == Spread::shared ? 1 : batch.segments;
         const auto qs = concat<G2, E>(q_segments, {
             {ct.d, n, batch.ciphertexts},
@@ -124,7 +122,9 @@ namespace cudapfe::QFE::BCFG{
             {ct.e, 1, batch.ciphertexts},
             {ct.e_hat, 1, batch.ciphertexts},
         });
-        return table.find(pair_segments(ps, qs, PairShape{batch.segments, 3 * n + 2, Spread::per_segment, batch.ciphertexts}));
+        return table.find(pair_segments(
+            ps, qs, PairShape{batch.segments, 3 * n + 2, Spread::per_segment, batch.ciphertexts}
+        ));
     }
 }
 

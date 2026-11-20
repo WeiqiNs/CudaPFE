@@ -24,4 +24,5 @@ TEST(VectorTest, VectorOperationsAreElementwise){
     EXPECT_EQ(concat({x, y, vector({7})}), vector({1, 2, 3, 4, 5, 6, 7}));
 
     EXPECT_THROW((void)(x + vector({1, 2})), ShapeError);
+    EXPECT_THROW((void)inner(x, vector({1, 2})), ShapeError);
 }

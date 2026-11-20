@@ -40,10 +40,6 @@ namespace cudapfe::detail{
 
         [[nodiscard]] std::size_t size() const{ return size_; }
 
-        // `source` may be freed as soon as this returns (to_engine passes a vector that dies with it). That is safe
-        // only because `source` is pageable: CUDA stages a pageable host-to-device cudaMemcpyAsync into its own
-        // buffer before returning. A pinned (cudaMallocHost/cudaHostRegister) source would be read asynchronously,
-        // so such a caller must keep it alive until the stream synchronizes.
         void copy_from(const std::span<const T> source){
             if (size_ == 0) return;
             check(cudaMemcpyAsync(data_, source.data(), size_ * sizeof(T), cudaMemcpyHostToDevice, stream_),

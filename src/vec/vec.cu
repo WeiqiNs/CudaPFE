@@ -15,8 +15,6 @@
 #include "support/hd.hpp"
 #include "vec/placement.hpp"
 #include "vec/points.cuh"
-#include "vec/reduce.cuh"
-#include "vec/reduction.hpp"
 #include "vec/spread.hpp"
 #include "vec/storage.hpp"
 

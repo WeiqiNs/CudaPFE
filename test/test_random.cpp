@@ -12,6 +12,8 @@ TEST(RandomTest, SeedMakesTheRandomSequenceReproducible){
     seed(bytes_of("seed-b"));
     const std::vector other{Zp::random(), Zp::random()};
 
+    EXPECT_EQ(first.front().to_string(),
+        "49265352440565724334159615326942584270622586368201043137340289674815210787403");
     EXPECT_EQ(first, again);
     EXPECT_NE(first, other);
     EXPECT_NE(first.front(), first.back());
