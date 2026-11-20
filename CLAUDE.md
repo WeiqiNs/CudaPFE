@@ -59,12 +59,12 @@ device's `CMAKE_CUDA_ARCHITECTURES` makes `GpuRuntime` throw a `DeviceError` nam
   `mul` plus `reduce_segments`. `pair_segments` chunks each segment over resident threads (at most `kMaxPairsPerItem`
   pairs per Gpu item), reduces the Miller products per segment, then final-exponentiates each. Unprepared, it pairs
   evenly sized chunks of segments (`detail::pair_in_chunks`) when a per-segment G2 side's lines would pass
-  `kLineBudgetBytes` (`src/pairing/plan.hpp`, 2 GiB like `kTableBudgetBytes`; lines take about 19.6 KB per Q, and a
-  chunk keeps at least one segment): each chunk's lines are freed stream-ordered before the next allocates, so peak
-  memory follows the chunk, and even chunks keep a small trailing chunk from idling the device.
-  `PlanTest.LineChunksFitTheBudget` pins the sizes and `MultiPairTest.ChunkedSegmentsMatchHostMultiPairing` that
-  per-segment results do not depend on the split, which `detail::pair_in_chunks` exposes so tests can force chunking
-  far below the budget.
+  `kLineBudgetBytes` (`src/pairing/plan.hpp`, 2 GiB like `kTableBudgetBytes`; lines take about 19.6 KB per Q). It
+  bounds only that case: a shared G2 side is prepared whole, and a chunk keeps at least one segment however long. Each
+  chunk's lines are freed stream-ordered before the next allocates, so peak memory follows the chunk, and even chunks
+  keep a small trailing chunk from idling the device. `PlanTest.LineChunksFitTheBudget` pins the sizes and
+  `MultiPairTest.ChunkedSegmentsMatchHostMultiPairing` that per-segment results do not depend on the split, which
+  `detail::pair_in_chunks` exposes so tests can force chunking far below the budget.
 - Schemes build exponents as host `Vector`s or `Matrix<E>` products, lift them with `mul_generator`
   (`IPFE::detail::lift`), and decrypt via `pair_segments` and a `DlogTable`/`DlogTables` lookup. `QFE::BCFG::dec`'s G2
   side holds only ciphertext and public-key points, so with one ciphertext it is built once and shared by every key. A
@@ -86,11 +86,15 @@ device's `CMAKE_CUDA_ARCHITECTURES` makes `GpuRuntime` throw a `DeviceError` nam
   also backs `Zp::random`/`seed` and is the tests' oracle.
 - `Gpu` work runs on one process-wide non-blocking stream (`GpuRuntime::require()`, `src/support/runtime.cu`), and
   `finish<E>()` synchronizes it, so calls never overlap. Keys, `G2Lines` and `DlogTable` are immutable and shared
-  across threads; `test/fe/test_concurrency.cpp` pins this.
+  across threads; `test/fe/test_concurrency.cpp` pins this. `DeviceArray::copy_from` sources may die as soon as it
+  returns (`to_engine` passes a temporary vector): CUDA stages a pageable host-to-device `cudaMemcpyAsync` before
+  returning, so a pinned (`cudaMallocHost`/`cudaHostRegister`) source would instead have to outlive the next sync.
 - Small `Gpu` calls run on the host: point addition, scaling, `mul_generator` and `msm` below `kHostPointsBelow`
   (`src/vec/placement.hpp`), pairings per `detail::place` (`src/pairing/plan.hpp`), all from the
-  `CUDAPFE_HOST_*_BELOW` cache variables. Tests that must reach the device size shapes from these constants and assert
-  the placement (`MultiPairTest.EveryPlacementAgrees`, `ConcurrentDeviceTest.*`); `PlanTest` pins `place`.
+  `CUDAPFE_HOST_*_BELOW` cache variables. Internal tests that must reach the device size shapes from these constants
+  and assert the placement (`MultiPairTest`, `MsmTest`, `QuadraticTest`, `ConcurrentDeviceTest.*`); `PlanTest` pins
+  `place`. The public `test_vec` and `test_mul_generator` suites use fixed sizes (300 and 875 values) that reach the
+  device only under the default `CUDAPFE_HOST_POINTS_BELOW`.
 - Kernels select a scalar's sign without a warp-divergent branch (`signed_scalar`, the sign select in `straus_sum`;
   README "Performance" has the measurements). `MsmTest.ScalarsOfZeroAndBoundaryWidthsSumCorrectly` takes the widths at
   and just past `kStrausMaxBits`, and `cudapfe_bench`'s "Single MSM by scalar width" table measures that crossover.

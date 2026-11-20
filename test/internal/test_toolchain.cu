@@ -53,6 +53,10 @@ TYPED_TEST(ForEachTest, VisitsEveryIndexExactlyOnce){
     }
 }
 
+TEST(ForEachTest, OverflowingTheGridIsADeviceError){
+    EXPECT_THROW(for_each<Gpu>(32 * kMaxBlocks + 1, AddIndexHashInWarps{{nullptr}}), DeviceError);
+}
+
 TEST(DeviceArrayTest, AllocationFailureIsADeviceError){
     CUDAPFE_REQUIRE_GPU();
     EXPECT_THROW(DeviceArray<std::byte>(std::size_t{1} << 50), DeviceError);
