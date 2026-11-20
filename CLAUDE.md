@@ -59,7 +59,12 @@ device's `CMAKE_CUDA_ARCHITECTURES` makes `GpuRuntime` throw a `DeviceError` nam
   `mul` plus `reduce_segments`. `pair_segments` chunks each segment over resident threads (at most `kMaxPairsPerItem`
   pairs per Gpu item), reduces the Miller products per segment, then final-exponentiates each. Unprepared, it pairs
   evenly sized chunks of segments (`detail::pair_in_chunks`) when a per-segment G2 side's lines would pass
-  `kLineBudgetBytes` (`src/pairing/plan.hpp`); `MultiPairTest.ChunkedSegmentsMatchHostMultiPairing` pins the split.
+  `kLineBudgetBytes` (`src/pairing/plan.hpp`, 2 GiB like `kTableBudgetBytes`; lines take about 19.6 KB per Q, and a
+  chunk keeps at least one segment): each chunk's lines are freed stream-ordered before the next allocates, so peak
+  memory follows the chunk, and even chunks keep a small trailing chunk from idling the device.
+  `PlanTest.LineChunksFitTheBudget` pins the sizes and `MultiPairTest.ChunkedSegmentsMatchHostMultiPairing` that
+  per-segment results do not depend on the split, which `detail::pair_in_chunks` exposes so tests can force chunking
+  far below the budget.
 - Schemes build exponents as host `Vector`s or `Matrix<E>` products, lift them with `mul_generator`
   (`IPFE::detail::lift`), and decrypt via `pair_segments` and a `DlogTable`/`DlogTables` lookup. A new scheme needs its
   header, an adapter in `test/fe/schemes.hpp`, an entry in `InnerProductSchemes` or `QuadraticSchemes`
@@ -72,7 +77,8 @@ device's `CMAKE_CUDA_ARCHITECTURES` makes `GpuRuntime` throw a `DeviceError` nam
   (`src/field/field.hpp`: host `Base` is blst's `blst_t` with 64-bit limbs, device is sppark's `mont_t` with 32-bit
   limbs, and the device inverse is a `pow`) and `MillerItemOp` (`src/pairing/multi_pair.cu`: the device packs pair
   liveness into `MaskedPairs`, sized for `kMaxPairsPerItem`). `-Werror=cross-execution-space-call` rejects host-only
-  calls in ops. Pinned by the `DeviceMatchesHost` and `...MatchesBlst` cases under `test/internal/`.
+  calls in ops. Pinned by the `DeviceMatchesHost` and `...MatchesBlst` cases under `test/internal/`, and for
+  `MillerItemOp` by the Gpu `MultiPairTest` cases that reach the device placement.
 - `third_party/sppark` stays byte-identical to upstream so it can be refreshed with the blst pin: on the host its
   `ff/bls12-381.hpp` includes blst's `blst_t.hpp`. `FieldTest.ConstantsMatchVendoredSppark` pins
   `kP` and `kR` to it; the other constants in `src/field/constants.hpp` are pinned by the blst comparisons. blst

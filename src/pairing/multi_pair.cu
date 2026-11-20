@@ -193,11 +193,9 @@ namespace cudapfe{
     Vec<Gt, E> detail::pair_in_chunks(
         const Vec<G1, E>& ps, const Vec<G2, E>& qs, const PairShape& shape, const std::size_t chunk_segments
     ){
-        if (shape.q == Spread::shared || chunk_segments == 0 || chunk_segments >= shape.segments){
+        if (shape.q == Spread::shared || chunk_segments >= shape.segments){
             return pair_prepared(ps, prepare_storage(qs), shape);
         }
-        // Each chunk's lines and Miller products are freed (stream-ordered) before the next chunk allocates its own,
-        // so peak memory follows the chunk, not the shape. Per-segment results are independent of the split.
         Buffer<Fp12, E> products(shape.segments);
         const auto p_layout = layout(shape, shape.p);
         for (std::size_t first = 0; first < shape.segments; first += chunk_segments){
