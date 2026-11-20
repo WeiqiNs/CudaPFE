@@ -10,7 +10,7 @@ user-facing overview and holds the scheme table.
 
 ```bash
 cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_CUDA_COMPILER=/usr/local/cuda/bin/nvcc -DCUDAPFE_BUILD_BENCH=ON
-cmake --build build                            # minutes; src/vec/vec.cu and test/internal/test_curve.cu dominate
+cmake --build build                            # minutes; test_curve.cu, msm_g2.cu and scaled.cu dominate
 ctest --test-dir build --output-on-failure     # Gpu cases report "Skipped" without a usable device
 ctest --test-dir build -R MsmTest              # or ./build/test/test_msm --gtest_filter='MsmTest/*'
 ./build/bench/cudapfe_bench --quick            # pairing, fixed-base, matrix, dlog, MSM tables vs blst
@@ -34,7 +34,9 @@ device's `CMAKE_CUDA_ARCHITECTURES` makes `GpuRuntime` throw a `DeviceError` nam
 - `include/cudapfe/fe/`: header-only schemes, one per file; shared helpers in `ipfe.hpp` and `qfe.hpp`.
 - `src/field/` (`Fp`, `Fr`, tower to `Fp12`, constants, SHA-256 counter RNG in `random.cpp`), `src/curve/` (affine and
   Jacobian arithmetic, `SignedScalar`, `straus_sum`, generator table, encoding), `src/pairing/` (Miller loop, final
-  exponentiation, placement), `src/vec/` (`Storage`, `Layout`, `Chunks`, segmented reduction, `Vec` ops),
+  exponentiation, placement), `src/vec/` (`Storage`, `Layout`, `Chunks`, segmented reduction, `Vec` ops;
+  heavy device code split across `vec.cu`, `scaled.cu`, `msm_g1.cu`/`msm_g2.cu` over `msm.cuh`, and `mul_generator.cu`
+  so it compiles in parallel, sharing `points.cuh`),
   `src/linalg/` (Gauss-Jordan), `src/dlog/` (baby-step giant-step), `src/support/` (`for_each`, `GpuRuntime`,
   `DeviceArray`, `Access`, `CUDAPFE_HD`).
 - `third_party/sppark/`: sppark's BLS12-381 field headers. `test/`: `fe/` scheme suites, `internal/` tests of
@@ -50,11 +52,14 @@ device's `CMAKE_CUDA_ARCHITECTURES` makes `GpuRuntime` throw a `DeviceError` nam
   `detail::for_each<E>` (`src/support/for_each.cuh`): a `run_each` kernel on `Gpu`, an OpenMP loop on `Cpu`. It may set
   `threads` (block size) and `host_parallel_from` (OpenMP cutoff). The caller then runs `detail::finish<E>()`.
 - Public templates are declared in `include/cudapfe/`, defined in `src/**/*.cu` and explicitly instantiated for both
-  engines at the bottom of that file. New sources go in `add_library(cudapfe_core ...)`; new tests in
-  `cudapfe_add_test` (`test/CMakeLists.txt`), marked `INTERNAL` when they include `src/` headers.
+  engines at the bottom of that file (split by group, as `msm`, when one file would dominate the build). New
+  sources go in `add_library(cudapfe_core ...)`; new tests in `cudapfe_add_test` (`test/CMakeLists.txt`), marked
+  `INTERNAL` when they include `src/` headers.
 - `msm` takes `straus_sum` when the widest signed scalar fits `kStrausMaxBits` (`src/curve/straus.hpp`), else per-term
   `mul` plus `reduce_segments`. `pair_segments` chunks each segment over resident threads (at most `kMaxPairsPerItem`
-  pairs per Gpu item), reduces the Miller products per segment, then final-exponentiates each.
+  pairs per Gpu item), reduces the Miller products per segment, then final-exponentiates each. Unprepared, it pairs
+  evenly sized chunks of segments (`detail::pair_in_chunks`) when a per-segment G2 side's lines would pass
+  `kLineBudgetBytes` (`src/pairing/plan.hpp`); `MultiPairTest.ChunkedSegmentsMatchHostMultiPairing` pins the split.
 - Schemes build exponents as host `Vector`s or `Matrix<E>` products, lift them with `mul_generator`
   (`IPFE::detail::lift`), and decrypt via `pair_segments` and a `DlogTable`/`DlogTables` lookup. A new scheme needs its
   header, an adapter in `test/fe/schemes.hpp`, an entry in `InnerProductSchemes` or `QuadraticSchemes`

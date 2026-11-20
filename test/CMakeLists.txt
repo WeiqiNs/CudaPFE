@@ -18,7 +18,7 @@ function(cudapfe_add_test name source)
     if (arg_INTERNAL)
         target_link_libraries(${name} PRIVATE cudapfe_internal)
     endif ()
-    gtest_discover_tests(${name} DISCOVERY_MODE PRE_TEST PROPERTIES SKIP_REGULAR_EXPRESSION "\\[  SKIPPED \\]" TIMEOUT 300)
+    gtest_discover_tests(${name} DISCOVERY_MODE PRE_TEST PROPERTIES SKIP_REGULAR_EXPRESSION "\\[  SKIPPED \\]." TIMEOUT 300)
 endfunction()
 
 cudapfe_add_test(test_toolchain internal/test_toolchain.cu INTERNAL)

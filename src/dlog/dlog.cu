@@ -177,8 +177,11 @@ namespace cudapfe{
 
         void sort_segments(BsgsTables<Cpu>& tables, const std::size_t entries){
             const auto width = tables.steps.baby;
-            std::vector<std::pair<std::uint64_t, std::uint32_t>> segment(width);
+            // Entries sort independently, so each thread owns whole segments; the result does not depend on how
+            // they are split. One entry (a single DlogTable) stays on one thread.
+#pragma omp parallel for if(entries >= 2)
             for (std::size_t e = 0; e < entries; ++e){
+                std::vector<std::pair<std::uint64_t, std::uint32_t>> segment(width);
                 const auto offset = e * width;
                 for (std::size_t j = 0; j < width; ++j){
                     segment[j] = {tables.fingerprints[offset + j], tables.baby_steps[offset + j]};

@@ -54,7 +54,10 @@ namespace cudapfe{
     }
 
     [[nodiscard]] inline Zp inner(const Vector& x, const Vector& y){
-        return sum(hadamard(x, y));
+        if (x.size() != y.size()) throw ShapeError("inner product needs vectors of equal length");
+        Zp total;
+        for (std::size_t i = 0; i < x.size(); ++i) total += x[i] * y[i];
+        return total;
     }
 
     [[nodiscard]] inline Vector concat(const std::initializer_list<Vector> parts){
